@@ -25,6 +25,7 @@ object SimpleTest {
     val sparkConf= new SparkConf()
       .setAppName("Mesos integration test")
       .setMaster(System.getProperty("spark.master"))
+      .set("spark.executor.uri", System.getProperty("spark.executor.uri"))
     val sc = new SparkContext(sparkConf)
     try {
     	t(sc)
