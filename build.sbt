@@ -2,7 +2,7 @@ val sparkHomeArg = sys.props.get("spark.home")
 
 val sparkHome = SettingKey[String]("spark-home", "the value of the variable 'spark.home'")
 val sparkMaster = SettingKey[String]("spark-master", "the value of the variable 'spark.master'")
-val sparkMaster = SettingKey[String]("spark-executor-uri", "the value of the variable 'spark.executor.uri', location of the spark jar on the cluster")
+val sparkExecutorURI = SettingKey[String]("spark-executor-uri", "the value of the variable 'spark.executor.uri', location of the spark jar on the cluster")
 
 lazy val root = (project in file(".")).
   settings(
@@ -20,10 +20,9 @@ lazy val root = (project in file(".")).
         // TODO: check if spark.master is a mesos URI (or zookeeper)
         sys.props.get("spark.master").getOrElse(error("spark.master not defined. Use '-Dspark.master=...'"))
     },
-    sparkHome := {
+    sparkExecutorURI := {
         sys.props.get("spark.executor.uri").getOrElse(error("spark.executor.uri not defined. Use '-Dspark.executor.uri=...'"))
     },
-    sparkMaster := {
     unmanagedJars in Compile ++= {
         val sparkHomeFile = file(sparkHome.value)
         val sparkJar = (sparkHomeFile / "lib") * "spark-assembly-*.jar"
