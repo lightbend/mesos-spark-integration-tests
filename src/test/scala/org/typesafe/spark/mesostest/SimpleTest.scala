@@ -40,6 +40,22 @@ class SimpleTest extends FunSuite {
     }
   }
 
+  test("simple count, coarse grained mode, attributes constraints") {
+    runSparkTest(("spark.mesos.coarse", "true"),
+      ("spark.mesos.constraints", "testAttr:yes")) { sc =>
+
+        val rdd = sc.makeRDD(1 to 5)
+        val res = rdd.sum()
+
+        assert(15 == res)
+
+        // check 2 tasks are running (coarse grained, with testAttr:yes)
+        val m = mesosCluster
+        assert(1 == m.frameworks.size, "only one framework should be running")
+        assert(2 == m.frameworks.head.tasks.size, "no task should be running")
+      }
+  }
+
 }
 
 object SimpleTest {
@@ -60,11 +76,8 @@ object SimpleTest {
     for (
       (key, value) <- ps
     ) {
-      println(s">>>>> set $key $value")
       sparkConf.set(key, value)
     }
-
-    println(sparkConf.getAll.toList)
 
     val sc = new SparkContext(sparkConf)
     try {
