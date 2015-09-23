@@ -1,7 +1,7 @@
 val sparkHomeArg = sys.props.get("spark.home")
 
 val sparkHome = SettingKey[String]("spark-home", "the value of the variable 'spark.home'")
-val sparkMaster = SettingKey[String]("spark-master", "the value of the variable 'spark.master'")
+val sparkMesosMaster = SettingKey[String]("spark.mesos.master", "the value of the variable 'spark.mesos.master'")
 val sparkExecutorURI = SettingKey[String]("spark-executor-uri", "the value of the variable 'spark.executor.uri', location of the spark jar on the cluster")
 
 lazy val root = (project in file(".")).
@@ -11,14 +11,14 @@ lazy val root = (project in file(".")).
     version := "0.1.0",
     scalaVersion := "2.10.5",
     libraryDependencies ++= Seq(
-      "org.scalatest" %% "scalatest" % "2.2.4"
+      "org.scalatest" %% "scalatest" % "2.2.4",
+      "com.typesafe" % "config" % "1.3.0"
     ),
     sparkHome := {
         sys.props.get("spark.home").getOrElse(error("spark.home not defined. Use '-Dspark.home=...'"))
     },
-    sparkMaster := {
-        // TODO: check if spark.master is a mesos URI (or zookeeper)
-        sys.props.get("spark.master").getOrElse(error("spark.master not defined. Use '-Dspark.master=...'"))
+    sparkMesosMaster := {
+        sys.props.get("spark.mesos.master").getOrElse(error("spark.mesos.master not defined. Use '-Dspark.mesos.master=...'"))
     },
     sparkExecutorURI := {
         sys.props.get("spark.executor.uri").getOrElse(error("spark.executor.uri not defined. Use '-Dspark.executor.uri=...'"))
