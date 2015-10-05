@@ -76,7 +76,7 @@ class SimpleTest extends FunSuite with TimeLimitedTests {
       }
   }
 
-  test("simple count, coarse grained mode, attributes constraints, no nodes") {
+  test("simple count, coarse grained mode, attributes constraints, no node") {
     runSparkTest(("spark.mesos.coarse", "true"),
       ("spark.mesos.constraints", "testAttrA:no")) { sc =>
 
@@ -95,9 +95,48 @@ class SimpleTest extends FunSuite with TimeLimitedTests {
         Thread.sleep(CANCEL_TIMEOUT.millisPart)
         println("end sleep")
 
-        assert(1 == latch.getCount, "computation should not have succeeded, no node should be available due to constraints")
+        assert(1 == latch.getCount, "computation should not have succeeded, no node should be available due to attribute constraints")
 
       }
+  }
+
+  test("simple cound, coarse grained mode, role constraint, all nodes") {
+    runSparkTest(("spark.mesos.coarse", "true"),
+      ("spark.mesos.role", "testAll")) { sc =>
+
+        val rdd = sc.makeRDD(1 to 5)
+        val res = rdd.sum()
+
+        assert(15 == res)
+
+        // check 2 tasks are running (coarse grained, with testAttr:yes)
+        val m = mesosCluster
+        assert(1 == m.frameworks.size, "only one framework should be running")
+        assert(3 == m.frameworks.head.tasks.size, "no task should be running")
+    }
+  }
+
+  ignore("simple cound, coarse grained mode, role constraint, no node") {
+    runSparkTest(("spark.mesos.coarse", "true"),
+      ("spark.mesos.role", "testNone")) { sc =>
+
+        val latch = new CountDownLatch(1)
+
+        new Thread {
+          override def run() {
+            val rdd = sc.makeRDD(1 to 5)
+            val res = rdd.sum()
+
+            latch.countDown()
+          }
+        }.start()
+
+        println(s"start sleep ${CANCEL_TIMEOUT.millisPart}")
+        Thread.sleep(CANCEL_TIMEOUT.millisPart)
+        println("end sleep")
+
+        assert(1 == latch.getCount, "computation should not have succeeded, no node should be available due to role constraint")
+    }
   }
 
   def mesosCluster(): MesosCluster = {
