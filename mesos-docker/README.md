@@ -30,7 +30,7 @@ To build the docker mesos image just run:
 
 Note: You can always build the image with your own repo:tag name and publish it as well.
 Otherwise just run the script to build the
-image from the default repo skonto/spark_mesos. Alternatively, you cal just pull
+image from the default repo skonto/spark_mesos. Alternatively, you can just pull
 the image with docker pull skonto/spark_mesos and skip building.
 
 ## Create the cluster
@@ -58,7 +58,7 @@ For example if a cluster has 2 slaves on a host with 8 cpus and 8GB of ram
 the 2 slaves will share 4 cpus and 4GB of ram approximately.
 We take advantage of the static resource allocation strategy for mesos.
 
-The master uri is [here](http://127.0.0.1:5050).
+The master uri is [here](http://127.0.1.1:5050).
 
 ## Using the cluster
 
