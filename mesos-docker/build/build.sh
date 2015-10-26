@@ -14,6 +14,8 @@ REPO=skonto/spark_mesos
 IS_QUIET=
 TO_PUBLISH=
 
+################################ FUNCTIONS #####################################
+
 function show_help {
 
 cat<< EOF
@@ -32,8 +34,6 @@ Options:
 EOF
 
 }
-
-################################ FUNCTIONS #####################################
 
 function parse_args {
 #parse args
@@ -99,12 +99,14 @@ fi
 
 }
 
-################################## MAIN ####################################
+################################## MAIN ########################################
 
 parse_args $@
-
 cat $SCRIPTPATH/message.txt
 echo -e "\n"
+
+type docker >/dev/null 2>&1 || { echo >&2 "docker binary is required but it's not installed.  Aborting."; exit 1; }
+
 printMsg "Building image:$REPO":"$IMAGE_VERSION"
 
 #docker build -t "$REPO":"$IMAGE_VERSION" ./images/mesos

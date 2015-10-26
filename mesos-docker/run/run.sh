@@ -1,10 +1,10 @@
-########################
+################################################################################
 #! /bin/bash
 # Author: skonto
 # date: 21/10/2015
 # purpose: Support spark with mesos on docker. Only net mode is supported since
 # there is a bug on the mesos side and spakr may need patching.
-########################
+################################################################################
 
 
 ################################ VARIABLES #####################################
@@ -147,8 +147,8 @@ Options:
 --spark-binary-file  the hadoop binary file to use in docker configuration (optional, if not present tries to download the image).
 --image-version  the image version to use for the containers (optional, defaults to the latest hardcoded value).
 --with-hdfs installs hdfs on the mesos master and slaves
---mem_th the percentage of the host cpus to use for slaves. Default: 0.5.
---cpu_th the percentage of the host memory to use for slaves. Default: 0.5.
+--mem-th the percentage of the host cpus to use for slaves. Default: 0.5.
+--cpu-th the percentage of the host memory to use for slaves. Default: 0.5.
 EOF
 
 }
@@ -210,7 +210,7 @@ while :; do
                   exit 1
               fi
               ;;
-          --mem_th)       # Takes an option argument, ensuring it has been specified.
+          --mem-th)       # Takes an option argument, ensuring it has been specified.
               if [ -n "$2" ]; then
                   MEM_TH=$2
                   shift 2
@@ -221,7 +221,7 @@ while :; do
                   exit 1
               fi
               ;;
-          --cpu_th)       # Takes an option argument, ensuring it has been specified.
+          --cpu-th)       # Takes an option argument, ensuring it has been specified.
               if [ -n "$2" ]; then
                   CPU_TH=$2
                   shift 2
@@ -269,6 +269,8 @@ parse_args $@
 cat $SCRIPTPATH/message.txt
 
 echo -e "\n"
+
+type docker >/dev/null 2>&1 || { echo >&2 "docker binary is required but it's not installed.  Aborting."; exit 1; }
 
 printMsg "Setting folders..."
 mkdir -p $SCRIPTPATH/binaries

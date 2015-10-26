@@ -33,6 +33,8 @@ Otherwise just run the script to build the
 image from the default repo skonto/spark_mesos. Alternatively, you can just pull
 the image with docker pull skonto/spark_mesos and skip building.
 
+For the available options run: buildsh.sh -h or build.sh --help.
+
 ## Create the cluster
 To run and configure your cluster execute run.sh and use the appropriate options.
 
@@ -57,8 +59,13 @@ The default is 0.5 of all host resources if you do not specify any parameters.
 For example if a cluster has 2 slaves on a host with 8 cpus and 8GB of ram
 the 2 slaves will share 4 cpus and 4GB of ram approximately.
 We take advantage of the static resource allocation strategy for mesos.
+To change the allocation use the flags --mem-th and --cpu-th.
+For the available options run: run.sh -h or run/sh --help.
+The script by default checks if the latest spark binary is available if not tries
+to download it. It is straightforward also to use a pre-existing binary like this:
+./run.sh --spark-binary-file /home/stavros/workspace/installs/spark-1.5.1-bin-hadoop2.6.tgz
 
-The master uri is [here](http://127.0.0.1:5050).
+You can access the master ui [here](http://127.0.0.1:5050).
 
 ## Using the cluster
 
