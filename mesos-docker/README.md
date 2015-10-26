@@ -63,8 +63,9 @@ To change the allocation use the flags --mem-th and --cpu-th.
 For the available options run: run.sh -h or run/sh --help.
 The script by default checks if the latest spark binary is available if not tries
 to download it. It is straightforward also to use a pre-existing binary like this:
+```sh
 ./run.sh --spark-binary-file /home/stavros/workspace/installs/spark-1.5.1-bin-hadoop2.6.tgz
-
+```
 You can access the master ui [here](http://127.0.0.1:5050).
 
 ## Using the cluster
