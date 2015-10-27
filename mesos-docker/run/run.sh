@@ -102,7 +102,7 @@ function start_slaves {
     echo "starting slave ...$i"
     cpus=$(calcf $(($(get_cpus)/$NUMBER_OF_SLAVES))*$CPU_TH)
     mem=$(calcf $(($(get_mem)/$NUMBER_OF_SLAVES))*$MEM_TH)
-    
+
     docker run -e "MESOS_MASTER=127.0.1.1:5050" \
     -e "MESOS_PORT=505$i" \
     -e  "MESOS_SWITCH_USER=false" \
@@ -127,24 +127,24 @@ function start_slaves {
 
 function show_help {
 
-  cat<< EOF
-  This script creates a mini mesos cluster for testing purposes.
-  Usage: $SCRIPT [OPTIONS]
+cat<< EOF
+This script creates a mini mesos cluster for testing purposes.
+Usage: $SCRIPT [OPTIONS]
 
-  eg: ./run.sh --number-of-slaves 3 --image-version 0.0.1
+eg: ./run.sh --number-of-slaves 3 --image-version 0.0.1
 
-  Options:
+Options:
 
-  -h|--help prints this message.
-  -q|quiet no output is shown to the console regarding execution status.
-  --number-of-slaves number of slave mesos containers to create (optional, defaults to 1).
-  --hadoop-binary-file  the hadoop binary file to use in docker configuration (optional, if not present tries to download the image).
-  --spark-binary-file  the hadoop binary file to use in docker configuration (optional, if not present tries to download the image).
-  --image-version  the image version to use for the containers (optional, defaults to the latest hardcoded value).
-  --with-hdfs installs hdfs on the mesos master and slaves
-  --mem-th the percentage of the host cpus to use for slaves. Default: 0.5.
-  --cpu-th the percentage of the host memory to use for slaves. Default: 0.5.
-  EOF
+-h|--help prints this message.
+-q|quiet no output is shown to the console regarding execution status.
+--number-of-slaves number of slave mesos containers to create (optional, defaults to 1).
+--hadoop-binary-file  the hadoop binary file to use in docker configuration (optional, if not present tries to download the image).
+--spark-binary-file  the hadoop binary file to use in docker configuration (optional, if not present tries to download the image).
+--image-version  the image version to use for the containers (optional, defaults to the latest hardcoded value).
+--with-hdfs installs hdfs on the mesos master and slaves
+--mem-th the percentage of the host cpus to use for slaves. Default: 0.5.
+--cpu-th the percentage of the host memory to use for slaves. Default: 0.5.
+EOF
 }
 
 function parse_args {
