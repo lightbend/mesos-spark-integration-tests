@@ -20,8 +20,9 @@ SLAVE_CONTAINER_NAME="spm_slave"
 MASTER_IMAGE="spark_mesos:$IMAGE_VERSION"
 SLAVE_IMAGE="spark_mesos:$IMAGE_VERSION"
 DOCKER_USER="skonto"
-START_COMMAND="/usr/sbin/mesos-master"
-START_COMMAND_SLAVE="/usr/sbin/mesos-slave"
+DOCKER_IP=$(docker-machine ip default)
+START_COMMAND_MASTER="/usr/sbin/mesos-master --ip=$DOCKER_IP"
+START_COMMAND_SLAVE="/usr/sbin/mesos-slave --master=$DOCKER_IP:5050"
 NUMBER_OF_SLAVES=1
 SPARK_BINARY_PATH=
 HADOOP_BINARY_PATH=
@@ -62,7 +63,7 @@ function start_master {
   --net=host \
   -d \
   -v "$SPARK_BINARY_PATH":/var/spark/$SPARK_FILE  \
-  --name $MASTER_CONTAINER_NAME $DOCKER_USER/$MASTER_IMAGE $START_COMMAND
+  --name $MASTER_CONTAINER_NAME $DOCKER_USER/$MASTER_IMAGE $START_COMMAND_MASTER
 }
 
 function get_binaries {
@@ -80,16 +81,23 @@ function calcf {
 }
 
 function get_cpus {
-  nproc
+  if [ "$(uname)" == "Darwin" ]; then
+    sysctl -n hw.ncpu
+  else
+    nproc
+  fi
 }
 
 function get_mem {
 
   #in Mbs
-
-  m=$(grep MemTotal /proc/meminfo | awk '{print $2}')
-
-  echo "$((m/1000))"
+  if [[ condition ]]; then
+    m=$(( $(vm_stat | awk '/free/ {gsub(/\./, "", $3); print $3}') * 4096 / 1048576))
+    echo "$m"
+  else
+    m=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+    echo "$((m/1000))"
+  fi
 }
 
 #libapparmor is needed
@@ -103,7 +111,7 @@ function start_slaves {
     cpus=$(calcf $(($(get_cpus)/$NUMBER_OF_SLAVES))*$CPU_TH)
     mem=$(calcf $(($(get_mem)/$NUMBER_OF_SLAVES))*$MEM_TH)
 
-    docker run -e "MESOS_MASTER=127.0.1.1:5050" \
+    docker run \
     -e "MESOS_PORT=505$i" \
     -e  "MESOS_SWITCH_USER=false" \
     -e  "MESOS_RESOURCES=ports(*):[920$i-920$i,930$i-930$i];cpus(*):$cpus;mem(*):$mem" \
@@ -118,6 +126,7 @@ function start_slaves {
     --name "$SLAVE_CONTAINER_NAME"_"$i" -it -v /var/lib/docker:/var/lib/docker -v /sys/fs/cgroup:/sys/fs/cgroup \
     -v "$SPARK_BINARY_PATH":/var/spark/$SPARK_FILE \
     -v  /usr/bin/docker:/usr/bin/docker \
+    -v  /usr/local/bin/docker:/usr/local/bin/docker \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v /usr/lib/x86_64-linux-gnu/libapparmor.so.1:/usr/lib/x86_64-linux-gnu/libapparmor.so.1:ro \
     $DOCKER_USER/$SLAVE_IMAGE $START_COMMAND_SLAVE
@@ -271,10 +280,10 @@ mkdir -p $SCRIPTPATH/binaries
 #clean up containers
 
 printMsg "Stopping and removing master container(s)..."
-docker ps -a | grep $MASTER_CONTAINER_NAME | awk '{print $1}' | xargs -i --  bash -c 'docker stop {}; docker rm {}'
+docker ps -a | grep $MASTER_CONTAINER_NAME | awk '{print $1}' | xargs docker rm -f
 
 printMsg "Stopping and removing slave container(s)..."
-docker ps -a | grep $SLAVE_CONTAINER_NAME | awk '{print $1}' | xargs -i --  bash -c 'docker stop {}; docker rm {}'
+docker ps -a | grep $SLAVE_CONTAINER_NAME | awk '{print $1}' | xargs docker rm -f
 
 printMsg "Getting binaries..."
 get_binaries
