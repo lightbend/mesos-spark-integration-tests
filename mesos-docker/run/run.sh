@@ -20,9 +20,6 @@ SLAVE_CONTAINER_NAME="spm_slave"
 MASTER_IMAGE="spark_mesos:$IMAGE_VERSION"
 SLAVE_IMAGE="spark_mesos:$IMAGE_VERSION"
 DOCKER_USER="skonto"
-DOCKER_IP=$(docker-machine ip default)
-START_COMMAND_MASTER="/usr/sbin/mesos-master --ip=$DOCKER_IP"
-START_COMMAND_SLAVE="/usr/sbin/mesos-slave --master=$DOCKER_IP:5050"
 NUMBER_OF_SLAVES=1
 SPARK_BINARY_PATH=
 HADOOP_BINARY_PATH=
@@ -44,10 +41,19 @@ function clean_up_container {
 
 }
 
+function docker_ip {
+  if [[ "$(uname)" == "Darwin" ]]; then
+    docker-machine ip default
+  else
+    /sbin/ifconfig docker0 | awk '/addr:/{ print $2;}' |  sed  's/addr://g'
+  fi
+}
+
 #start master
 function start_master {
 
-  #clean previous instances if any
+  dip=$(docker_ip)
+  start_master_command="/usr/sbin/mesos-master --ip=$dip"
 
   docker run -p 5050:5050 \
   -e "MESOS_EXECUTOR_REGISTRATION_TIMEOUT=5mins" \
@@ -63,7 +69,7 @@ function start_master {
   --net=host \
   -d \
   -v "$SPARK_BINARY_PATH":/var/spark/$SPARK_FILE  \
-  --name $MASTER_CONTAINER_NAME $DOCKER_USER/$MASTER_IMAGE $START_COMMAND_MASTER
+  --name $MASTER_CONTAINER_NAME $DOCKER_USER/$MASTER_IMAGE $start_master_command
 }
 
 function get_binaries {
@@ -81,7 +87,7 @@ function calcf {
 }
 
 function get_cpus {
-  if [ "$(uname)" == "Darwin" ]; then
+  if [[ "$(uname)" == "Darwin" ]]; then
     sysctl -n hw.ncpu
   else
     nproc
@@ -91,7 +97,7 @@ function get_cpus {
 function get_mem {
 
   #in Mbs
-  if [[ condition ]]; then
+  if [[ "$(uname)" == "Darwin"  ]]; then
     m=$(( $(vm_stat | awk '/free/ {gsub(/\./, "", $3); print $3}') * 4096 / 1048576))
     echo "$m"
   else
@@ -104,6 +110,9 @@ function get_mem {
 #https://github.com/RayRutjes/simple-gitlab-runner/pull/1
 
 function start_slaves {
+
+  dip=$(docker_ip)
+  start_slave_command="/usr/sbin/mesos-slave --master=$dip:5050"
 
   for i in `seq 1 $NUMBER_OF_SLAVES`;
   do
@@ -129,7 +138,7 @@ function start_slaves {
     -v  /usr/local/bin/docker:/usr/local/bin/docker \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v /usr/lib/x86_64-linux-gnu/libapparmor.so.1:/usr/lib/x86_64-linux-gnu/libapparmor.so.1:ro \
-    $DOCKER_USER/$SLAVE_IMAGE $START_COMMAND_SLAVE
+    $DOCKER_USER/$SLAVE_IMAGE $start_slave_command
   done
 }
 
@@ -293,5 +302,9 @@ start_master
 
 printMsg "Starting slave(s)..."
 start_slaves
+
+printMsg "Mesos cluster started!"
+
+printMsg "Mesos cluster dashboard url http://$(docker_ip):5050"
 
 exit 0
