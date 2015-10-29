@@ -31,6 +31,7 @@ SPARK_FILE=spark-$SPARK_VERSION-bin-hadoop$HADOOP_VERSION_FOR_SPARK.tgz
 RESOURCE_THRESHOLD=0.5
 MEM_TH=$RESOURCE_THRESHOLD
 CPU_TH=$RESOURCE_THRESHOLD
+SHARED_FOLDER="$HOME/temp"
 
 ################################ FUNCTIONS #####################################
 function clean_up_container {
@@ -137,6 +138,7 @@ function start_slaves {
     -v  /usr/bin/docker:/usr/bin/docker \
     -v  /usr/local/bin/docker:/usr/local/bin/docker \
     -v /var/run/docker.sock:/var/run/docker.sock \
+    -v "$SHARED_FOLDER":/app \
     -v /usr/lib/x86_64-linux-gnu/libapparmor.so.1:/usr/lib/x86_64-linux-gnu/libapparmor.so.1:ro \
     $DOCKER_USER/$SLAVE_IMAGE $start_slave_command
   done
