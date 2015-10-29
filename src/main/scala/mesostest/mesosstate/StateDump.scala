@@ -1,4 +1,4 @@
-package org.typesafe.spark.mesostest.mesosstate
+package mesostest.mesosstate
 
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
@@ -13,20 +13,21 @@ import MesosState._
 
 case class MesosCluster(frameworks: List[MesosFramework])
 
+case class MesosFramework (tasks: List[MesosTask])
+
 object MesosCluster {
   def apply(c: Config): MesosCluster = {
     import collection.JavaConverters._
-    val frameworks: List[MesosFramework] = c.getConfigList("frameworks").asScala.map{ 
-      MesosFramework(_)
-    }(collection.breakOut)
+    val frameworks: List[MesosFramework] =
+      c.getConfigList("frameworks").asScala.map(MesosFramework.apply)(collection.breakOut)
     MesosCluster(frameworks)
   }
+
   def apply(url: URL): MesosCluster = {
     apply(ConfigFactory.parseURL(url))
   }
 }
 
-case class MesosFramework (tasks: List[MesosTask])
 
 object MesosFramework {
   def apply(c: Config): MesosFramework = {
