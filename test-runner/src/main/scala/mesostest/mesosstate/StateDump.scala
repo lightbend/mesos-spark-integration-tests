@@ -13,7 +13,7 @@ import MesosState._
 
 case class MesosCluster(frameworks: List[MesosFramework])
 
-case class MesosFramework (tasks: List[MesosTask])
+case class MesosFramework (frameworkId: String, tasks: List[MesosTask])
 
 object MesosCluster {
   def apply(c: Config): MesosCluster = {
@@ -26,6 +26,10 @@ object MesosCluster {
   def apply(url: URL): MesosCluster = {
     apply(ConfigFactory.parseURL(url))
   }
+
+  def loadStates(mesosConsoleUrl: String): MesosCluster = {
+    MesosCluster(new URL(s"${mesosConsoleUrl}/state.json"))
+  }
 }
 
 
@@ -35,7 +39,8 @@ object MesosFramework {
     val tasks: List[MesosTask] = c.getConfigList("tasks").asScala.map{ 
       MesosTask(_)
     }(collection.breakOut)
-    MesosFramework(tasks)
+    val frameworkId = c.getString("id")
+    MesosFramework(frameworkId, tasks)
   }
 }
 

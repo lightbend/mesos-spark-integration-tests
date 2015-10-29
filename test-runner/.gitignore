@@ -28,3 +28,4 @@ data/Divvy
 tmp/**
 .sass-cache
 metastore_db
+shared-loc/**
