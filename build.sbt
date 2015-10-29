@@ -18,36 +18,34 @@ libraryDependencies ++= Seq(
 
 val mit = inputKey[Unit]("Runs spark/mesos integration tests.")
 
-mainClass := Some("org.typesafe.spark.mesos.test.framework.MesosIntegrationTestRunner")
+mainClass := Some("org.typesafe.spark.mesos.framework.runners.MesosIntegrationTestRunner")
 
 //invoking inputtasks is weird in sbt. TODO simplify this
-def runMainInCompile(sparkSubmitScript: String,
-                     sparkExecutorPath: String,
+def runMainInCompile(sparkHome: String,
                      mesosMasterUrl: String,
                      applicationJar: String) = Def.taskDyn {
 
- val main = s"  ${mainClass.value.get} $sparkSubmitScript $sparkExecutorPath $mesosMasterUrl $applicationJar"
+ val main = s"  ${mainClass.value.get} $sparkHome $mesosMasterUrl $applicationJar"
  (runMain in Compile).toTask(main)
 }
 
 mit := Def.inputTaskDyn {
  val args: Seq[String] = spaceDelimited("<arg>").parsed
 
- if(args.size != 3) {
+ if(args.size != 2) {
   val log = streams.value.log
-  log.error("Please provide all the args: <spark-home> <spark-executor-tgz.file> <mesos-master-url>")
+  log.error("Please provide all the args: <spark-home> <mesos-master-url>")
   sys.error("failed")
  }
  args foreach println
  //find the spark-submit shell script
- val sparkSubmitScript = s"${args(0)}/bin/spark-submit"
- val sparkExecutorPath = args(1)
- val mesosMasterUrl = args(2)
+ val sparkHome = args(0)
+ val mesosMasterUrl = args(1)
 
  //depends on assembly task to package the current project
  val output = assembly.value
 
  //run the main with args
- runMainInCompile(sparkSubmitScript, sparkExecutorPath, mesosMasterUrl, output.getAbsolutePath)
+ runMainInCompile(sparkHome, mesosMasterUrl, output.getAbsolutePath)
 
 }.evaluated
