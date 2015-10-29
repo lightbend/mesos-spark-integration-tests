@@ -14,7 +14,7 @@ Please use the [spark-ops-docker](https://github.com/typesafehub/spark-ops-docke
 
 ## Configure the project
 
-Update the application.conf file under src/main/resources with respective values. 
+Update the **application.conf** file under *src/main/resources* with respective values before running the tests. 
 
 ##Running the tests
 
@@ -25,4 +25,4 @@ cd mesos-spark-integration-tests
 sbt "mit <spark_home> mesos://<mesos-master-ip>:5050"
 ```
 
-**We use spark_submit.sh from <SPARK_HOME> to submit jobs. So please make sure you have spark binary distribution download and unzip**
+*We use spark_submit.sh from <SPARK_HOME> to submit jobs. So please make sure you have spark binary distribution download and unzip*
