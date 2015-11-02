@@ -1,0 +1,32 @@
+<configuration>
+  <property>
+    <name>dfs.datanode.data.dir</name>
+    <value>file:///root/data/datanode</value>
+    <description>Comma separated list of paths on the local filesystem of a DataNode where it should store its blocks.</description>
+  </property>
+
+  <property>
+    <name>dfs.namenode.name.dir</name>
+    <value>file:///root/data/namenode</value>
+    <description>Path on the local filesystem where the NameNode stores the namespace and transaction logs persistently.</description>
+  </property>
+
+  <property>
+    <name>dfs.permissions.enabled</name>
+    <value>false</value>
+  </property>
+
+  <property>
+    <name>dfs.replication</name>
+    <value>1</value>
+  </property>
+
+  <!-- Enable dynamic created containers to register as datanodes -->
+  <property>
+    <name>dfs.namenode.datanode.registration.ip-hostname-check</name>
+    <value>false</value>
+  </property>
+
+  REPLACE
+
+</configuration>
