@@ -28,6 +28,7 @@ HADOOP_VERSION_FOR_SPARK=2.6
 INSTALL_HDFS=
 IS_QUIET=
 SPARK_FILE=spark-$SPARK_VERSION-bin-hadoop$HADOOP_VERSION_FOR_SPARK.tgz
+HADOOP_FILE=hadoop-$HADOOP_VERSION_FOR_SPARK.0.tar.gz
 RESOURCE_THRESHOLD=0.5
 MEM_TH=$RESOURCE_THRESHOLD
 CPU_TH=$RESOURCE_THRESHOLD
@@ -55,6 +56,11 @@ function start_master {
 
   dip=$(docker_ip)
   start_master_command="/usr/sbin/mesos-master --ip=$dip"
+  if [[ -n $INSTALL_HDFS ]]; then
+    HADOOP_VOLUME="-v $HADOOP_BINARY_PATH:/var/hadoop/$HADOOP_FILE"
+  else
+    HADOOP_VOLUME=
+  fi
 
   docker run -p 5050:5050 \
   -e "MESOS_EXECUTOR_REGISTRATION_TIMEOUT=5mins" \
@@ -69,18 +75,38 @@ function start_master {
   --expose=5050 \
   --net=host \
   -d \
-  -v "$SPARK_BINARY_PATH":/var/spark/$SPARK_FILE  \
-  --name $MASTER_CONTAINER_NAME $DOCKER_USER/$MASTER_IMAGE $start_master_command
+  --name $MASTER_CONTAINER_NAME \
+  -v "$SCRIPTPATH/hadoop":/var/hadoop \
+  -v "$SPARK_BINARY_PATH":/var/spark/$SPARK_FILE  $HADOOP_VOLUME \
+  $DOCKER_USER/$MASTER_IMAGE $start_master_command
+
+  if [[ -n $INSTALL_HDFS ]]; then
+    docker exec -it $MASTER_CONTAINER_NAME /bin/bash /var/hadoop/hadoop_setup.sh
+    docker exec -it $MASTER_CONTAINER_NAME /usr/local/bin/hdfs namenode -format -nonInterActive
+    docker exec -it $MASTER_CONTAINER_NAME /usr/local/sbin/hadoop-daemon.sh --script hdfs start namenode
+    docker exec -it $MASTER_CONTAINER_NAME /usr/local/sbin/hadoop-daemon.sh --script hdfs start datanode
+  fi
+
 }
 
 function get_binaries {
 
   if [[ -z "${SPARK_BINARY_PATH}" ]]; then
     SPARK_BINARY_PATH=$SCRIPTPATH/binaries/$SPARK_FILE
-    if [ ! -f "$SCRIPTPATH/binaries/$SPARK_FILE" ]; then
+    if [ ! -f "$SPARK_BINARY_PATH" ]; then
       wget -P $SCRIPTPATH/binaries/ http://d3kbcqa49mib13.cloudfront.net/$SPARK_FILE
     fi
   fi
+
+  if [[ -n $INSTALL_HDFS ]]; then
+    if [[ -z "${HADOOP_BINARY_PATH}" ]]; then
+      HADOOP_BINARY_PATH=$SCRIPTPATH/binaries/$HADOOP_FILE
+      if [ ! -f "$HADOOP_BINARY_PATH" ]; then
+        TMP_FILE_PATH="hadoop-$HADOOP_VERSION_FOR_SPARK.0/hadoop-$HADOOP_VERSION_FOR_SPARK.0.tar.gz"
+        wget -P $SCRIPTPATH/binaries/ "http://mirror.switch.ch/mirror/apache/dist/hadoop/common/$TMP_FILE_PATH"
+        fi
+      fi
+    fi
 }
 
 function calcf {
@@ -114,33 +140,49 @@ function start_slaves {
 
   dip=$(docker_ip)
   start_slave_command="/usr/sbin/mesos-slave --master=$dip:5050"
-
+  number_of_ports=3
   for i in `seq 1 $NUMBER_OF_SLAVES`;
   do
     echo "starting slave ...$i"
     cpus=$(calcf $(($(get_cpus)/$NUMBER_OF_SLAVES))*$CPU_TH)
     mem=$(calcf $(($(get_mem)/$NUMBER_OF_SLAVES))*$MEM_TH)
 
+    if [[ -n $INSTALL_HDFS ]]; then
+      HADOOP_VOLUME="-v $HADOOP_BINARY_PATH:/var/hadoop/$HADOOP_FILE"
+    else
+      HADOOP_VOLUME=
+    fi
+
     docker run \
     -e "MESOS_PORT=505$i" \
-    -e  "MESOS_SWITCH_USER=false" \
-    -e  "MESOS_RESOURCES=ports(*):[920$i-920$i,930$i-930$i];cpus(*):$cpus;mem(*):$mem" \
+    -e "MESOS_SWITCH_USER=false" \
+    -e "MESOS_RESOURCES=ports(*):[920$i-920$i,930$i-930$i];cpus(*):$cpus;mem(*):$mem" \
     -e "MESOS_ISOLATOR=cgroups/cpu,cgroups/mem" \
     -e "MESOS_EXECUTOR_REGISTRATION_TIMEOUT=5mins" \
     -e "MESOS_CONTAINERIZERS=docker,mesos" \
     -e "MESOS_LOG_DIR=/var/log" \
+    -e "IT_DFS_DATANODE_ADDRESS_PORT=$((50100 + $(($i -1))*$number_of_ports + 1 ))" \
+    -e "IT_DFS_DATANODE_HTTP_ADDRESS_PORT=$((50100 + $(($i -1))*$number_of_ports + 2))" \
+    -e "IT_DFS_DATANODE_IPC_ADDRESS_PORT=$((50100 + $(($i -1))*$number_of_ports + 3))" \
     -d \
     --privileged=true \
     --pid=host \
     --net=host \
     --name "$SLAVE_CONTAINER_NAME"_"$i" -it -v /var/lib/docker:/var/lib/docker -v /sys/fs/cgroup:/sys/fs/cgroup \
-    -v "$SPARK_BINARY_PATH":/var/spark/$SPARK_FILE \
+    -v "$SPARK_BINARY_PATH":/var/spark/$SPARK_FILE $HADOOP_VOLUME \
     -v  /usr/bin/docker:/usr/bin/docker \
     -v  /usr/local/bin/docker:/usr/local/bin/docker \
     -v /var/run/docker.sock:/var/run/docker.sock \
+    -v "$SCRIPTPATH/hadoop":/var/hadoop \
     -v "$SHARED_FOLDER":/app \
     -v /usr/lib/x86_64-linux-gnu/libapparmor.so.1:/usr/lib/x86_64-linux-gnu/libapparmor.so.1:ro \
     $DOCKER_USER/$SLAVE_IMAGE $start_slave_command
+
+  if [[ -n $INSTALL_HDFS ]]; then
+    docker exec -it "$SLAVE_CONTAINER_NAME"_"$i" /bin/bash /var/hadoop/hadoop_setup.sh SLAVE
+    docker exec -it "$SLAVE_CONTAINER_NAME"_"$i" /usr/local/sbin/hadoop-daemon.sh --script hdfs start datanode
+  fi
+
   done
 }
 
@@ -187,9 +229,7 @@ function parse_args {
         shift 2
         continue
       else
-        printf 'ERROR: "--number-of-slaves" requires a non-empty option argument.\n' >&2
-        show_help
-        exit 1
+        exitWithMsg '"--number-of-slaves" requires a non-empty option argument.\n'
       fi
       ;;
       --spark-binary-file)       # Takes an option argument, ensuring it has been specified.
@@ -198,9 +238,7 @@ function parse_args {
         shift 2
         continue
       else
-        printf 'ERROR: "spark-binary-file" requires a non-empty option argument.\n' >&2
-        show_help
-        exit 1
+        exitWithMsg '"spark-binary-file" requires a non-empty option argument.\n'
       fi
       ;;
       --image-version)       # Takes an option argument, ensuring it has been specified.
@@ -209,9 +247,7 @@ function parse_args {
         shift 2
         continue
       else
-        printf 'ERROR: "--image-version" requires a non-empty option argument.\n' >&2
-        show_help
-        exit 1
+        exitWithMsg '"--image-version" requires a non-empty option argument.\n'
       fi
       ;;
       --hadoop-binary-file)       # Takes an option argument, ensuring it has been specified.
@@ -220,9 +256,7 @@ function parse_args {
         shift 2
         continue
       else
-        printf 'ERROR: "hadoop-binary-file" requires a non-empty option argument.\n' >&2
-        show_help
-        exit 1
+        exitWithMsg '"hadoop-binary-file" requires a non-empty option argument.\n'
       fi
       ;;
       --mem-th)       # Takes an option argument, ensuring it has been specified.
@@ -231,9 +265,7 @@ function parse_args {
         shift 2
         continue
       else
-        printf 'ERROR: "mem_th" requires a non-empty option argument.\n' >&2
-        show_help
-        exit 1
+        exitWithMsg '"mem_th" requires a non-empty option argument.\n'
       fi
       ;;
       --cpu-th)       # Takes an option argument, ensuring it has been specified.
@@ -242,9 +274,7 @@ function parse_args {
         shift 2
         continue
       else
-        printf 'ERROR: "cpu_th" requires a non-empty option argument.\n' >&2
-        show_help
-        exit 1
+        exitWithMsg '"cpu_th" requires a non-empty option argument.\n'
       fi
       ;;
       --with-hdfs)       # Takes an option argument, ensuring it has been specified.
@@ -267,6 +297,16 @@ function parse_args {
     esac
     shift
   done
+
+  if [[ -n $HADOOP_BINARY_PATH && -z $INSTALL_HDFS ]]; then
+    exitWithMsg "You need to specify the with-hdfs flag, otherwise --hadoop-binary-path is ignored"
+  fi
+}
+
+function exitWithMsg {
+  printf 'ERROR: '"$1"'.\n' >&2
+  show_help
+  exit 1
 }
 
 function printMsg {
@@ -308,5 +348,9 @@ start_slaves
 printMsg "Mesos cluster started!"
 
 printMsg "Mesos cluster dashboard url http://$(docker_ip):5050"
+
+printMsg "Hdfs cluster started!"
+
+printMsg "Hdfs cluster dashboard url http://$(docker_ip):50070"
 
 exit 0

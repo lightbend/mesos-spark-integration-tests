@@ -70,13 +70,13 @@ At the end of the script run a message is printed with url of the master for exa
 
 Mesos cluster dashboard url http://172.17.42.1:5050
 
-## HDFS
+### HDFS
 
 Using the --with-hdfs flag you can setup a full hdfs system:
 ```sh
 ./run.sh --with-hdfs
 ```
-To access the namenode: localhost:5007.
+To access the hadoop ui: http://localhost:50070.
 
 Run the following command to see how many datanodes are running:
 
@@ -84,6 +84,10 @@ Run the following command to see how many datanodes are running:
 docker -it spm_master hdfs dfsadmin -report
 ```
 
+Note: The result of the above command will not match the datanodes in the hadoop ui due
+to a known [bug](https://issues.apache.org/jira/browse/HDFS-7303) for versions <2.7.
+In such version you can only see one datanode.
+This applies when datanodes are all created in localhost.
 
 ## Using the cluster
 
@@ -91,7 +95,7 @@ Connecting from your host to the cluster is simple. To connect form spark repl
 for example you need (assuming you are under the spark installation dir):
 ```sh
 export SPARK_EXECUTOR_URI=/var/spark/spark-1.5.1-bin-hadoop2.6.tgz
-./spark-shell --master mesos://http://172.17.42.1:5050  
+./spark-shell --master mesos://172.17.42.1:5050  
 ```
 If you assign one cpu per slave then you need to set:
 --conf spark.mesos.mesosExecutor.cores=0
