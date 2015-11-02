@@ -76,7 +76,7 @@ Using the --with-hdfs flag you can setup a full hdfs system:
 ```sh
 ./run.sh --with-hdfs
 ```
-To access the hadoop ui: http://localhost:50070.
+To access the hadoop ui for example: http://172.17.42.1:50070.
 
 Run the following command to see how many datanodes are running:
 
