@@ -58,7 +58,7 @@ function print_host_ip {
 
     printMsg "The IP address of the host inside docker $hostIpAddr"
   else
-    printMsg "The IP address of the host inside docker $docker_ip"  
+    printMsg "The IP address of the host inside docker $(docker_ip)"  
   fi  
 }
 
