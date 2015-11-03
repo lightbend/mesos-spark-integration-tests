@@ -1,17 +1,71 @@
 package org.typesafe.spark.mesos.framework.runners
 
-import java.io.File
-import java.net.InetAddress
+import java.io.{PrintStream, File}
+import java.net.{ServerSocket, Socket, InetAddress}
 import java.nio.file.Files
+import java.util.concurrent._
 
 import com.typesafe.config.Config
 import mesostest.mesosstate.MesosCluster
 
 import scala.annotation.tailrec
-import scala.io.Source
+import scala.io.{BufferedSource, Source}
 import scala.sys.process.Process
 
 object Utils {
+
+
+  def sendMessage[A](runnerAddress: InetAddress, msg: A): Unit = {
+    val socket = new Socket(runnerAddress, 8888)
+    val writer = new PrintStream(socket.getOutputStream)
+    try {
+      writer.println(msg)
+    } finally {
+      writer.flush()
+      writer.close()
+      socket.close()
+    }
+  }
+
+  def runSparkJobAndCollectResult(job: => Unit): List[String] = {
+    val pool = Executors.newSingleThreadExecutor()
+    val server = new ServerSocket(8888)
+    val results: Future[List[String]] = startServerForResults(server, pool)
+    //run the job
+    try {
+      job
+      //return the result of the test
+      results.get()
+    } finally {
+      server.close()
+      pool.shutdown()
+    }
+  }
+
+  def startServerForResults(server: ServerSocket, pool: ExecutorService) = {
+
+    def handleConnection(socket: Socket): List[String] = {
+      val source = new BufferedSource(socket.getInputStream)
+      val results = source.getLines().toList
+      source.close()
+      socket.close()
+      results
+    }
+
+    pool.submit(new Callable[List[String]] {
+      override def call(): List[String] = {
+        var results: List[String] = Nil
+        var done = false
+        while(!done) {
+          val socket = server.accept()
+          val taskResults = handleConnection(socket)
+          done = taskResults.exists(_.contains("<DONE/>"))
+          results ++= taskResults
+        }
+        results
+      }
+    })
+  }
 
 
   def killAnyRunningFrameworks(mesosConsoleUrl: String) = {
@@ -27,30 +81,6 @@ object Utils {
       p.!
     }
   }
-
-  //looking for a file called <testresult log>.done file which will be produced
-  //by the spark job runner when its finished
-  def blockTillJobIsOverAndReturnResult(baseDir: String, logFile: String): List[String] = {
-    //TODO: Use Java 8 watch service
-    val logFileName = new File(logFile).getName
-    val doneFileName = logFileName + ".done"
-
-    //poor man's way to check whether file is created.
-    val file = new File(baseDir, doneFileName)
-    @tailrec
-    def checkFileExists: Boolean = {
-      if(file.exists()) {
-        true
-      } else {
-        Thread.sleep(10000) //in milliseconds
-        printMsg(s"Checking for ${file.getAbsoluteFile}")
-        checkFileExists
-      }
-    }
-    checkFileExists
-    Source.fromFile(baseDir + "/" + logFileName).getLines().toList
-  }
-
 
   def submitSparkJob(jobDesc: String, jobArgs: String*)(implicit config: Config) = {
     val cmd: Seq[String] = Seq(jobDesc) ++ jobArgs
@@ -68,10 +98,6 @@ object Utils {
     println("")
   }
 
-
-  def logFileForThisRun(base: String): String = {
-    s"${base}/test-results-${System.nanoTime()}.log"
-  }
 
   def startMesosDispatcher(sparkHome: String, sparkExecutorPath: String, mesosMasterUrl: String)(implicit config: Config): String = {
     //stop any running mesos dispatcher first

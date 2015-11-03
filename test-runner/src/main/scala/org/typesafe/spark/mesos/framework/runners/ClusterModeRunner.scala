@@ -11,7 +11,7 @@ import scala.sys.process.Process
 
 object ClusterModeRunner {
 
-  def run(args: Array[String], mesosMode: String)(implicit config: Config) = {
+  def run(args: Array[String])(implicit config: Config) = {
     val sparkHome = args(0)
     val mesosMasterUrl = args(1)
     val applicationJarPath = args(2)
@@ -22,6 +22,8 @@ object ClusterModeRunner {
     //docker location mounted with the above host location
     val dockerLocation = config.getString("docker.location")
 
+    val dockerHostAddress = config.getString("docker.host.ip")
+
     //copying application jar to docker location so mesos slaves can pick it up
     val dockerJarLocation = copyApplicationJar(applicationJarPath, sharedHostLocation, dockerLocation)
     printMsg(s"copying application jar file to $sharedHostLocation")
@@ -31,29 +33,26 @@ object ClusterModeRunner {
     //mesos dispatcher it doesn't die automatically
     killAnyRunningFrameworks(mesosConsoleUrl)
 
-    //start the dispatcher
-    val dispatcherUrl = startMesosDispatcher(sparkHome,
-      config.getString("spark.executor.tgz.location"),
-      mesosMasterUrl)
-    printMsg(s"Mesos dispatcher running at $dispatcherUrl")
+    runSparkJobAndCollectResult {
+      //start the dispatcher
+      val dispatcherUrl = startMesosDispatcher(sparkHome,
+        config.getString("spark.executor.tgz.location"),
+        mesosMasterUrl)
+      printMsg(s"Mesos dispatcher running at $dispatcherUrl")
 
-    val testResultsLog = logFileForThisRun(dockerLocation)
+      //run spark submit in cluster mode
+      val sparkSubmitJobDesc = Seq(s"${sparkHome}/bin/spark-submit",
+        "--class org.typesafe.spark.mesos.framework.runners.SparkJobRunner",
+        s"--master $dispatcherUrl",
+        s"--driver-memory 512mb",
+        s"--deploy-mode cluster")
 
-    //run spark submit in cluster mode
-    val sparkSubmitJobDesc = Seq(s"${sparkHome}/bin/spark-submit",
-      "--class org.typesafe.spark.mesos.framework.runners.SparkJobRunner",
-      s"--master $dispatcherUrl",
-      s"--driver-memory 512mb",
-      s"--deploy-mode cluster")
-
-    submitSparkJob(sparkSubmitJobDesc.mkString(" "),
-      dockerJarLocation,
-      mesosConsoleUrl,
-      mesosMode,
-      "cluster",
-      testResultsLog)
-
-    blockTillJobIsOverAndReturnResult(sharedHostLocation, testResultsLog)
+      submitSparkJob(sparkSubmitJobDesc.mkString(" "),
+        dockerJarLocation,
+        mesosConsoleUrl,
+        "cluster",
+        dockerHostAddress)
+    }
   }
 
 }
