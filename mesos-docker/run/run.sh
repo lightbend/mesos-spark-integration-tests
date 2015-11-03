@@ -28,8 +28,10 @@ HADOOP_VERSION_FOR_SPARK=2.6
 INSTALL_HDFS=
 IS_QUIET=
 SPARK_FILE=spark-$SPARK_VERSION-bin-hadoop$HADOOP_VERSION_FOR_SPARK.tgz
+
 HADOOP_FILE=hadoop-$HADOOP_VERSION_FOR_SPARK.0.tar.gz
-RESOURCE_THRESHOLD=0.5
+RESOURCE_THRESHOLD=1.0
+
 MEM_TH=$RESOURCE_THRESHOLD
 CPU_TH=$RESOURCE_THRESHOLD
 SHARED_FOLDER="$HOME/temp"
@@ -48,6 +50,18 @@ function docker_ip {
     docker-machine ip default
   else
     /sbin/ifconfig docker0 | awk '/addr:/{ print $2;}' |  sed  's/addr://g'
+  fi
+}
+
+function print_host_ip {
+  if [[ "$(uname)" == "Darwin"  ]]; then
+    #Getting the IP address of the host as it seen by docker container
+    masterContainerId=$(docker ps -a | grep $MASTER_CONTAINER_NAME | awk '{print $1}')
+    hostIpAddr=$(docker exec -it $masterContainerId /bin/sh -c "sudo ip route" | awk '/default/ { print $3 }')
+
+    printMsg "The IP address of the host inside docker $hostIpAddr"
+  else
+    printMsg "The IP address of the host inside docker $(docker_ip)"
   fi
 }
 
@@ -174,7 +188,7 @@ function start_slaves {
     -v  /usr/local/bin/docker:/usr/local/bin/docker \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v "$SCRIPTPATH/hadoop":/var/hadoop \
-    -v "$SHARED_FOLDER":/app \
+    -v "$SHARED_FOLDER":/app:ro \
     -v /usr/lib/x86_64-linux-gnu/libapparmor.so.1:/usr/lib/x86_64-linux-gnu/libapparmor.so.1:ro \
     $DOCKER_USER/$SLAVE_IMAGE $start_slave_command
 
@@ -352,5 +366,8 @@ printMsg "Mesos cluster dashboard url http://$(docker_ip):5050"
 printMsg "Hdfs cluster started!"
 
 printMsg "Hdfs cluster dashboard url http://$(docker_ip):50070"
+
+print_host_ip
+
 
 exit 0
