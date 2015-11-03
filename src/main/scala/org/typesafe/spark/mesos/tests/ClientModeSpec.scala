@@ -1,33 +1,29 @@
-package org.typesafe.spark.mesos.tests.client
+package org.typesafe.spark.mesos.tests
 
-import java.net.URL
+import java.net.InetAddress
 
 import mesostest.mesosstate.MesosCluster
-import org.apache.spark.{Accumulable, SparkContext}
 import org.scalatest.FunSuite
 import org.scalatest.concurrent.TimeLimitedTests
-import org.typesafe.spark.mesos.framework.runners.{TestResult, TestResultCollector}
-import org.typesafe.spark.mesos.tests.MesosIntTestHelper
 
 import scala.collection.mutable.{Set => MSet}
 
-object ClientFineGrainMode {
+object ClientModeSpec {
   import org.scalatest.time.SpanSugar._
 
   val TEST_TIMEOUT = 300 seconds
 }
 
-class ClientFineGrainMode(sc: SparkContext,
-                              mesosConsoleUrl: String,
-                              accumulable: Accumulable[TestResultCollector, TestResult])
+class ClientModeSpec(mesosConsoleUrl: String,
+                          runnerAddress: InetAddress)
   extends FunSuite with TimeLimitedTests with MesosIntTestHelper {
 
-  import ClientFineGrainMode._
+  import ClientModeSpec._
 
   override val timeLimit = TEST_TIMEOUT
 
   test("simple sum in fine grain mode") {
-    accumulateResult("ClientFineGrainMode - simple sum", accumulable) {
+    runSparkTest("ClientFineGrainMode", runnerAddress, "spark.mesos.coarse" -> "false") { sc =>
       val rdd = sc.makeRDD(1 to 5)
       val res = rdd.sum()
 
@@ -40,7 +36,7 @@ class ClientFineGrainMode(sc: SparkContext,
   }
 
   test("simple collect in fine grain mode") {
-    accumulateResult("ClientFineGrainMode - collect example", accumulable) {
+    runSparkTest("ClientFineGrainMode - collect example", runnerAddress, "spark.mesos.coarse" -> "false") { sc =>
       val rdd = sc.makeRDD(1 to 5)
       val res = rdd.collect()
 
@@ -51,5 +47,19 @@ class ClientFineGrainMode(sc: SparkContext,
       assert(0 == m.frameworks.head.tasks.size, "no task should be running")
     }
   }
+
+  test("simple count in coarse grain mode") {
+    runSparkTest("ClientCoarseGrainMode", runnerAddress, "spark.mesos.coarse" -> "true") { sc =>
+      val rdd = sc.makeRDD(1 to 5)
+      val res = rdd.sum()
+
+      assert(15 == res)
+
+      val m = MesosCluster.loadStates(mesosConsoleUrl)
+      assert(1 == m.frameworks.size, "only one framework should be running")
+      assert(1 == m.frameworks.head.tasks.size, "no task should be running")
+    }
+  }
+
 }
 
