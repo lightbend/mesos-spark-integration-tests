@@ -50,6 +50,18 @@ function docker_ip {
   fi
 }
 
+function print_host_ip {
+  if [[ "$(uname)" == "Darwin"  ]]; then     
+    #Getting the IP address of the host as it seen by docker container 
+    masterContainerId=$(docker ps -a | grep $MASTER_CONTAINER_NAME | awk '{print $1}')
+    hostIpAddr=$(docker exec -it $masterContainerId /bin/sh -c "sudo ip route" | awk '/default/ { print $3 }')
+
+    printMsg "The IP address of the host inside docker $hostIpAddr"
+  else
+    printMsg "The IP address of the host inside docker $docker_ip"  
+  fi  
+}
+
 #start master
 function start_master {
 
@@ -309,11 +321,6 @@ printMsg "Mesos cluster started!"
 
 printMsg "Mesos cluster dashboard url http://$(docker_ip):5050"
 
-#Getting the IP address of the host as it seen by docker container 
-masterContainerId=$(docker ps -a | grep $MASTER_CONTAINER_NAME | awk '{print $1}')
-hostIpAddr=$(docker exec -it $masterContainerId /bin/sh -c "sudo ip route" | awk '/default/ { print $3 }')
-
-printMsg "The IP address of the host inside docker $hostIpAddr"
-
+print_host_ip
 
 exit 0
