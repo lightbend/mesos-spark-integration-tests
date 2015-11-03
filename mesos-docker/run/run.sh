@@ -363,9 +363,11 @@ printMsg "Mesos cluster started!"
 
 printMsg "Mesos cluster dashboard url http://$(docker_ip):5050"
 
-printMsg "Hdfs cluster started!"
-
-printMsg "Hdfs cluster dashboard url http://$(docker_ip):50070"
+if [[ -n $INSTALL_HDFS ]]; then
+  printMsg "Hdfs cluster started!"
+  printMsg "Hdfs cluster dashboard url http://$(docker_ip):50070"
+  printMsg "Hdfs usrl http://$(docker_ip):8020"
+fi
 
 print_host_ip
 
