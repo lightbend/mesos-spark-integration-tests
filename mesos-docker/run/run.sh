@@ -28,7 +28,7 @@ HADOOP_VERSION_FOR_SPARK=2.6
 INSTALL_HDFS=
 IS_QUIET=
 SPARK_FILE=spark-$SPARK_VERSION-bin-hadoop$HADOOP_VERSION_FOR_SPARK.tgz
-RESOURCE_THRESHOLD=0.5
+RESOURCE_THRESHOLD=1.0
 MEM_TH=$RESOURCE_THRESHOLD
 CPU_TH=$RESOURCE_THRESHOLD
 SHARED_FOLDER="$HOME/temp"
@@ -138,7 +138,7 @@ function start_slaves {
     -v  /usr/bin/docker:/usr/bin/docker \
     -v  /usr/local/bin/docker:/usr/local/bin/docker \
     -v /var/run/docker.sock:/var/run/docker.sock \
-    -v "$SHARED_FOLDER":/app \
+    -v "$SHARED_FOLDER":/app:ro \
     -v /usr/lib/x86_64-linux-gnu/libapparmor.so.1:/usr/lib/x86_64-linux-gnu/libapparmor.so.1:ro \
     $DOCKER_USER/$SLAVE_IMAGE $start_slave_command
   done
@@ -308,5 +308,12 @@ start_slaves
 printMsg "Mesos cluster started!"
 
 printMsg "Mesos cluster dashboard url http://$(docker_ip):5050"
+
+#Getting the IP address of the host as it seen by docker container 
+masterContainerId=$(docker ps -a | grep $MASTER_CONTAINER_NAME | awk '{print $1}')
+hostIpAddr=$(docker exec -it $masterContainerId /bin/sh -c "sudo ip route" | awk '/default/ { print $3 }')
+
+printMsg "The IP address of the host inside docker $hostIpAddr"
+
 
 exit 0
