@@ -90,7 +90,7 @@ In buggy versions you can only see one datanode. This applies when datanodes are
 
 ### Configuring Master and Slave explicitly
 
-You can easily configure master and slaves according with the following options,
+You can easily configure master and slaves with the following options,
 --mesos-master-config, --mesos-slave-config.
 
 ```sh
