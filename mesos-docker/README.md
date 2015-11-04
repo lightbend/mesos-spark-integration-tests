@@ -84,6 +84,7 @@ Run the following command to see how many datanodes are running:
 docker -it spm_master hdfs dfsadmin -report
 ```
 Each mesos slave gets one datanode and the master has a namenode and a datanode.
+
 Note: The result of the above command will not match the datanodes in the hadoop ui due
 to a known [bug](https://issues.apache.org/jira/browse/HDFS-7303) for versions <2.7.
 In buggy versions you can only see one datanode. This applies when datanodes are all created in localhost.
