@@ -15,27 +15,16 @@ import scala.sys.process.Process
 object Utils {
 
 
-  def sendMessage[A](runnerAddress: InetAddress, msg: A): Unit = {
-    val socket = new Socket(runnerAddress, 8888)
-    val writer = new PrintStream(socket.getOutputStream)
-    try {
-      writer.println(msg)
-    } finally {
-      writer.flush()
-      writer.close()
-      socket.close()
-    }
-  }
-
-  def runSparkJobAndCollectResult(job: => Unit): List[String] = {
+  def runSparkJobAndCollectResult(job: => Unit)(implicit config: Config): List[String] = {
     val pool = Executors.newSingleThreadExecutor()
-    val server = new ServerSocket(8888)
+    val server = new ServerSocket(config.getInt("test.runner.port"))
     val results: Future[List[String]] = startServerForResults(server, pool)
+    val timeout = config.getDuration("test.timeout", TimeUnit.MILLISECONDS)
     //run the job
     try {
       job
       //return the result of the test
-      results.get()
+      results.get(timeout, TimeUnit.MILLISECONDS)
     } finally {
       server.close()
       pool.shutdown()
@@ -54,15 +43,9 @@ object Utils {
 
     pool.submit(new Callable[List[String]] {
       override def call(): List[String] = {
-        var results: List[String] = Nil
-        var done = false
-        while(!done) {
-          val socket = server.accept()
-          val taskResults = handleConnection(socket)
-          done = taskResults.exists(_.contains("<DONE/>"))
-          results ++= taskResults
-        }
-        results
+        val socket = server.accept()
+        val taskResults = handleConnection(socket)
+        taskResults
       }
     })
   }
