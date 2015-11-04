@@ -9,14 +9,12 @@ The project sets up a cluster of the following components using docker:
 
 ## Setup your host machine
 
-execute:
+**_Install the latest docker version_**  then execute (only for ubuntu):
 
 ```sh
 sudo su
 ./host_setup_ubuntu.sh
 ```
-
-Note: **_Install the latest docker version_**.
 
 The script installs the latest mesos library on the system also libapparmor which
 is needed by docker executable due to a bug, and stops mesos services on your local
@@ -90,6 +88,48 @@ Note: The result of the above command will not match the datanodes in the hadoop
 to a known [bug](https://issues.apache.org/jira/browse/HDFS-7303) for versions <2.7.
 In buggy versions you can only see one datanode. This applies when datanodes are all created in localhost.
 
+### Configuring Master and Slave explicitly
+
+You can easily configure master and slaves according with the following options,
+--mesos-master-config, --mesos-slave-config.
+
+```sh
+./run.sh --mesos-master-config "--roles=role" --mesos-slave-config "--resources=cpus(role):8;mem(role):4000 --attributes=spark:only"
+```
+
+There are some restrictions though:
+- Configurations for slaves are the same so it is not possible for each slave to have different attributes.
+To support this would require orchestration capabilities (like in the ones found kubernetes) and it is not
+needed as the goal is to test spark on mesos.
+- Some properties are used to set the cluster to work correctly in docker net=host mode, so
+changing their values may broken the set up. For example --ip is pre-configured to a specific value
+so it is known in advance where to bind the master and this will not be discovered from the manual configuration.
+Resources can be configured for the slaves but have in mind that they are the same for all slaves, you cannot allocate different ports per slave for example.
+We give next which values are pre-configured through env variables:
+
+```sh
+#master:
+-e "MESOS_EXECUTOR_REGISTRATION_TIMEOUT=5mins" \
+-e "MESOS_ISOLATOR=cgroups/cpu,cgroups/mem" \
+-e "MESOS_PORT=5050" \
+-e "MESOS_LOG_DIR=/var/log" \
+-e "MESOS_REGISTRY=in_memory" \
+-e "MESOS_WORK_DIR=/tmp/mesos" \
+-e "MESOS_CONTAINERIZERS=docker,mesos" \
+```
+
+```sh
+-e "MESOS_PORT=505$i" \
+-e "MESOS_SWITCH_USER=false" \
+-e "MESOS_RESOURCES=cpus(*):$cpus;mem(*):$mem" \
+-e "MESOS_ISOLATOR=cgroups/cpu,cgroups/mem" \
+-e "MESOS_EXECUTOR_REGISTRATION_TIMEOUT=5mins" \
+-e "MESOS_CONTAINERIZERS=docker,mesos" \
+-e "MESOS_LOG_DIR=/var/log" \
+```
+As it is clear ports are auto allocated and there is no need to change.
+Resources are overriden if specified at the command line by default.
+
 ## Using the cluster
 
 Connecting from your host to the cluster is simple. To connect form spark repl
@@ -103,3 +143,17 @@ If you assign one cpu per slave then you need to set:
 
 because mesosExecutor reserves by default 1 cpu and otherwise the job will not
 have enough resources.
+
+### Mesos Roles And Attributes with Spark
+
+You can configure roles for slaves and attributes as follows:
+
+```sh
+./run.sh --mesos-master-config "--roles=role" --mesos-slave-config "--attributes=spark:only"
+```
+
+and connect to the master as follows:
+
+```sh
+./spark-shell --master mesos://172.17.42.1:5050 --conf spark.mesos.role=role --conf spark.mesos.constraints="spark:only"
+```
