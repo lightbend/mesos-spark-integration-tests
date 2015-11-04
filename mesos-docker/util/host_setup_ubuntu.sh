@@ -15,9 +15,9 @@ function setup_host {
   apt-get -y install mesos=${VERSION} && \
   rm -rf /var/lib/apt/lists/*
 
-  service stop mesos-master
-  service stop mesos-slave
-  service stop zookeeper
+  service mesos-master stop
+  service mesos-slave stop
+  service zookeeper stop
 
   apt-get install libapparmor1  #needed for docker binary
 

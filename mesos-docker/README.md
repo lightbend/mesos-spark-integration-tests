@@ -3,7 +3,7 @@
 The project sets up a cluster of the following components using docker:
 - mesos (supported)
 - spark (supported)
-- hdfs (not supported yet)
+- hdfs (supported)
 - zookeeper (not supported yet)
 - marathon (not supported yet, needs zookeeper)
 
@@ -15,6 +15,8 @@ execute:
 sudo su
 ./host_setup_ubuntu.sh
 ```
+
+Note: **_Install the latest docker version_**.
 
 The script installs the latest mesos library on the system also libapparmor which
 is needed by docker executable due to a bug, and stops mesos services on your local
@@ -66,7 +68,27 @@ to download it. It is straightforward also to use a pre-existing binary like thi
 ```sh
 ./run.sh --spark-binary-file /home/stavros/workspace/installs/spark-1.5.1-bin-hadoop2.6.tgz
 ```
-You can access the master ui [here](http://127.0.0.1:5050).
+At the end of the script run a message is printed with url of the master for example:
+
+Mesos cluster dashboard url http://172.17.42.1:5050
+
+### HDFS
+
+Using the --with-hdfs flag you can setup a full hdfs system:
+```sh
+./run.sh --with-hdfs
+```
+To access the hadoop ui for example: http://172.17.42.1:50070.
+
+Run the following command to see how many datanodes are running:
+
+```sh
+docker -it spm_master hdfs dfsadmin -report
+```
+
+Note: The result of the above command will not match the datanodes in the hadoop ui due
+to a known [bug](https://issues.apache.org/jira/browse/HDFS-7303) for versions <2.7.
+In buggy versions you can only see one datanode. This applies when datanodes are all created in localhost.
 
 ## Using the cluster
 
@@ -74,7 +96,7 @@ Connecting from your host to the cluster is simple. To connect form spark repl
 for example you need (assuming you are under the spark installation dir):
 ```sh
 export SPARK_EXECUTOR_URI=/var/spark/spark-1.5.1-bin-hadoop2.6.tgz
-./spark-shell --master mesos://127.0.1.1:5050  
+./spark-shell --master mesos://172.17.42.1:5050  
 ```
 If you assign one cpu per slave then you need to set:
 --conf spark.mesos.mesosExecutor.cores=0
