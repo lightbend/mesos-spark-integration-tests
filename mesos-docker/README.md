@@ -16,6 +16,8 @@ sudo su
 ./host_setup_ubuntu.sh
 ```
 
+Note: **_Install the latest docker version_**.
+
 The script installs the latest mesos library on the system also libapparmor which
 is needed by docker executable due to a bug, and stops mesos services on your local
 host so that the cluster created later can run in net=host mode.
