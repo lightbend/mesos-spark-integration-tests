@@ -51,7 +51,8 @@ object ClusterModeRunner {
         dockerJarLocation,
         mesosConsoleUrl,
         "cluster",
-        dockerHostAddress)
+        dockerHostAddress,
+        config.getString("test.runner.port"))
     }
   }
 
