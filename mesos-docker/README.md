@@ -17,7 +17,7 @@ sudo su
 ```
 
 The script installs the latest mesos library on the system also libapparmor which
-is needed by docker executable due to a bug, and stops mesos services on your local
+is needed by docker executable due to a [bug](https://github.com/RayRutjes/simple-gitlab-runner/pull/1), and stops mesos services on your local
 host so that the cluster created later can run in net=host mode.
 
 ## Build the images or pull them
@@ -83,7 +83,7 @@ Run the following command to see how many datanodes are running:
 ```sh
 docker -it spm_master hdfs dfsadmin -report
 ```
-
+Each mesos slave gets one datanode and the master has a namenode and a datanode.
 Note: The result of the above command will not match the datanodes in the hadoop ui due
 to a known [bug](https://issues.apache.org/jira/browse/HDFS-7303) for versions <2.7.
 In buggy versions you can only see one datanode. This applies when datanodes are all created in localhost.
@@ -127,7 +127,7 @@ We give next which values are pre-configured through env variables:
 -e "MESOS_CONTAINERIZERS=docker,mesos" \
 -e "MESOS_LOG_DIR=/var/log" \
 ```
-As it is clear ports are auto allocated and there is no need to change.
+As it is clear mesos master/slave bind ports are auto allocated and there is no need to change.
 Resources are overriden if specified at the command line by default.
 
 ## Using the cluster
