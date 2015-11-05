@@ -1,15 +1,15 @@
 package org.typesafe.spark.mesos.framework.runners
 
-import java.io.{PrintStream, File}
-import java.net.{ServerSocket, Socket, InetAddress}
-import java.nio.file.Files
+import java.io.{FileInputStream, File}
+import java.net.{InetAddress, ServerSocket, Socket}
 import java.util.concurrent._
 
 import com.typesafe.config.Config
 import mesostest.mesosstate.MesosCluster
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs._
 
-import scala.annotation.tailrec
-import scala.io.{BufferedSource, Source}
+import scala.io.BufferedSource
 import scala.sys.process.Process
 
 object Utils {
@@ -105,14 +105,23 @@ object Utils {
     s"mesos://${InetAddress.getLocalHost().getHostName()}:${dispatcherPort}"
   }
 
-  def copyApplicationJar(jar: String, hostLocation: String, dockerLocation: String) = {
+  def copyApplicationJar(jar: String, uri: String) = {
+    System.setProperty("HADOOP_USER_NAME", "root")
     val fileName = new File(jar).getName
-    //remove existing copy
-    Process(s"rm ${hostLocation}/${fileName}").!
-    //copy the application jar file
-    Process(s"cp ${jar} ${hostLocation}").!
+    val path = new Path("/app/" + fileName)
+    val conf = new Configuration()
+    conf.set("fs.defaultFS", uri)
+    val fs = FileSystem.get(conf)
+    val os: FSDataOutputStream = fs.create(path, 1.toShort)
+    import org.apache.commons.io.IOUtils
+    val input = new FileInputStream(jar)
+    IOUtils.copy(input, os)
 
-    s"$dockerLocation/${fileName}"
+    input.close()
+    os.close()
+    fs.close()
+
+    s"$uri/app/$fileName"
   }
 
   def stopMesosDispatcher(sparkHome: String): Int = {

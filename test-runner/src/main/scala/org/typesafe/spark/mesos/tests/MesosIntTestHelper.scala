@@ -3,14 +3,6 @@ package org.typesafe.spark.mesos.tests
 import org.apache.spark.{SparkConf, SparkContext}
 import org.scalatest.FunSuite
 
-sealed trait TestResult {
-  val testName: String
-  val message: Option[String]
-}
-
-case class TestPassed(testName: String, message: Option[String] = None)
-case class TestFailed(testName: String, message: Option[String] = None)
-
 object MesosIntTestHelper {
   import org.scalatest.time.SpanSugar._
 
@@ -33,7 +25,7 @@ trait MesosIntTestHelper { self: FunSuite =>
     test(name) {
       val sparkConf = new SparkConf()
         .setAppName(s"$SPARK_FRAMEWORK_PREFIX-$name")
-        .set("spark.executor.memory", "512mb")
+        .set("spark.executor.memory", "256mb")
         .set("spark.app.id", "mit-spark")
       for (
         (key, value) <- ps
