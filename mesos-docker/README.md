@@ -11,7 +11,7 @@ The project sets up a cluster of the following components using docker:
 
 You will need: wget and python installed.
 
-**_Install the latest docker version_**  then execute (only for ubuntu):
+**_Install the latest docker version >=1.8.3_**  then execute (only for ubuntu):
 
 ```sh
 sudo su
