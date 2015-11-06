@@ -172,7 +172,7 @@ echo $MESOS_SLAVE_CONFIG
     fi
 
     docker run \
-    -e "MESOS_PORT=505$i" \
+    -e "MESOS_PORT=$((5050 + $i))" \
     -e "MESOS_SWITCH_USER=false" \
     -e "MESOS_RESOURCES=cpus(*):$cpus;mem(*):$mem" \
     -e "MESOS_ISOLATOR=cgroups/cpu,cgroups/mem" \
@@ -205,6 +205,51 @@ echo $MESOS_SLAVE_CONFIG
   done
 }
 
+function create_html {
+
+TOTAL_NODES=$(($NUMBER_OF_SLAVES + 1 ))
+HTML_SNIPPET=
+for i in `seq 1 $NUMBER_OF_SLAVES` ; do
+HTML_SNIPPET=$HTML_SNIPPET"<div>Slave $i: $(docker_ip):$((5050 + $i))</div>"
+done
+
+read -d '' node_info <<EOF
+
+<div class="my_item">Total Number of Nodes: $TOTAL_NODES (1 Master, $NUMBER_OF_SLAVES Slave(s))</div>
+<div>Mesos Master: $(docker_ip):5050 </div>
+$HTML_SNIPPET
+<div style="margin-top:1em">The IP of the docker interface on host: $(docker_ip)</div>
+<div class="my_item">$(print_host_ip)</div>
+
+<div class="alert alert-success" role="alert">Your cluster is up and running!</div>
+EOF
+awk -v r="$node_info" '{gsub(/REPLACE_NODES/,r)}1' $SCRIPTPATH/template.html >  tmp_file && mv tmp_file $SCRIPTPATH/index.html
+
+HDFS_SNIPPET_1=
+HDFS_SNIPPET_OUT=
+if [[ -n $INSTALL_HDFS ]]; then
+HDFS_SNIPPET_1="<div>HDFS url: hdfs://$(docker_ip):8020</div>"
+HDFS_SNIPPET_OUT="<div> <a href=\"#\" id=\"hho_link\"> Hadoop Healthcheck output </a></div> \
+<div id=\"hho\" class=\"my_item\"><pre>$(docker exec -it spm_master hdfs dfsadmin -report)</pre></div>"
+fi
+
+read -d '' dash_info <<EOF
+<div> <a data-toggle="tooltip" data-placement="top" data-original-title="$(docker_ip):5050" href="http://$(docker_ip):5050">Mesos UI</a> </div>
+<div class="my_item"><a data-toggle="tooltip" data-placement="top" data-original-title="$(docker_ip):50070" href="http://$(docker_ip):50070">Hadoop UI</a></div>
+$HDFS_SNIPPET_1
+<div>Spark Uri: /var/spark/${SPARK_FILE} </div>
+<div class="my_item">Spark master: mesos://$(docker_ip):5050</div>
+
+$HDFS_SNIPPET_OUT
+<div> <a href="#" id="mho_link"> Mesos Healthcheck output </a></div>
+<div id="mho"><pre>$(curl -s http://$(docker_ip):5050/master/state.json | python -m json.tool) </pre></div>
+<div style="margin-top:10px;"" class="alert alert-success" role="alert">Your cluster is up and running!</div>
+EOF
+
+awk -v r="$dash_info" '{gsub(/REPLACE_DASHBOARDS/,r)}1' $SCRIPTPATH/index.html >  tmp_file && mv tmp_file $SCRIPTPATH/index.html
+
+
+}
 
 function show_help {
 
@@ -395,5 +440,6 @@ fi
 
 print_host_ip
 
+create_html
 
 exit 0
