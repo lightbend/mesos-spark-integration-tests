@@ -228,14 +228,14 @@ awk -v r="$node_info" '{gsub(/REPLACE_NODES/,r)}1' $SCRIPTPATH/template.html >  
 HDFS_SNIPPET_1=
 HDFS_SNIPPET_OUT=
 if [[ -n $INSTALL_HDFS ]]; then
-HDFS_SNIPPET_1="<div>HDFS url: hdfs://$(docker_ip):8020</div>"
+HDFS_SNIPPET_1="<div class=\"my_item\"><a data-toggle=\"tooltip\" data-placement=\"top\" data-original-title=\"$(docker_ip):50070\" href=\"http://$(docker_ip):50070\">Hadoop UI</a></div>\
+<div>HDFS url: hdfs://$(docker_ip):8020</div>"
 HDFS_SNIPPET_OUT="<div> <a href=\"#\" id=\"hho_link\"> Hadoop Healthcheck output </a></div> \
 <div id=\"hho\" class=\"my_item\"><pre>$(docker exec -it spm_master hdfs dfsadmin -report)</pre></div>"
 fi
 
 read -d '' dash_info <<EOF
 <div> <a data-toggle="tooltip" data-placement="top" data-original-title="$(docker_ip):5050" href="http://$(docker_ip):5050">Mesos UI</a> </div>
-<div class="my_item"><a data-toggle="tooltip" data-placement="top" data-original-title="$(docker_ip):50070" href="http://$(docker_ip):50070">Hadoop UI</a></div>
 $HDFS_SNIPPET_1
 <div>Spark Uri: /var/spark/${SPARK_FILE} </div>
 <div class="my_item">Spark master: mesos://$(docker_ip):5050</div>
@@ -243,7 +243,7 @@ $HDFS_SNIPPET_1
 $HDFS_SNIPPET_OUT
 <div> <a href="#" id="mho_link"> Mesos Healthcheck output </a></div>
 <div id="mho"><pre>$(curl -s http://$(docker_ip):5050/master/state.json | python -m json.tool) </pre></div>
-<div style="margin-top:10px;"" class="alert alert-success" role="alert">Your cluster is up and running!</div>
+<div style="margin-top:10px;" class="alert alert-success" role="alert">Your cluster is up and running!</div>
 EOF
 
 awk -v r="$dash_info" '{gsub(/REPLACE_DASHBOARDS/,r)}1' $SCRIPTPATH/index.html >  tmp_file && mv tmp_file $SCRIPTPATH/index.html
