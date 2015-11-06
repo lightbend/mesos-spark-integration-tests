@@ -3,7 +3,7 @@
 # Author: skonto
 # date: 21/10/2015
 # purpose: Support spark with mesos on docker. Only net mode is supported since
-# there is a bug on the mesos side and spakr may need patching.
+# there is a bug on the mesos side and spark may need patching.
 ################################################################################
 
 
@@ -28,7 +28,8 @@ HADOOP_VERSION_FOR_SPARK=2.6
 INSTALL_HDFS=
 IS_QUIET=
 SPARK_FILE=spark-$SPARK_VERSION-bin-hadoop$HADOOP_VERSION_FOR_SPARK.tgz
-
+MESOS_MASTER_CONFIG=
+MESOS_SLAVE_CONFIG=
 HADOOP_FILE=hadoop-$HADOOP_VERSION_FOR_SPARK.0.tar.gz
 RESOURCE_THRESHOLD=1.0
 
@@ -69,7 +70,7 @@ function print_host_ip {
 function start_master {
 
   dip=$(docker_ip)
-  start_master_command="/usr/sbin/mesos-master --ip=$dip"
+  start_master_command="/usr/sbin/mesos-master --ip=$dip $MESOS_MASTER_CONFIG"
   if [[ -n $INSTALL_HDFS ]]; then
     HADOOP_VOLUME="-v $HADOOP_BINARY_PATH:/var/hadoop/$HADOOP_FILE"
   else
@@ -119,9 +120,9 @@ function get_binaries {
       if [ ! -f "$HADOOP_BINARY_PATH" ]; then
         TMP_FILE_PATH="hadoop-$HADOOP_VERSION_FOR_SPARK.0/hadoop-$HADOOP_VERSION_FOR_SPARK.0.tar.gz"
         wget -P $SCRIPTPATH/binaries/ "http://mirror.switch.ch/mirror/apache/dist/hadoop/common/$TMP_FILE_PATH"
-        fi
       fi
     fi
+  fi
 }
 
 function calcf {
@@ -153,8 +154,10 @@ function get_mem {
 
 function start_slaves {
 
+echo $MESOS_SLAVE_CONFIG
+
   dip=$(docker_ip)
-  start_slave_command="/usr/sbin/mesos-slave --master=$dip:5050"
+  start_slave_command="/usr/sbin/mesos-slave --master=$dip:5050 $MESOS_SLAVE_CONFIG"
   number_of_ports=3
   for i in `seq 1 $NUMBER_OF_SLAVES`;
   do
@@ -171,7 +174,7 @@ function start_slaves {
     docker run \
     -e "MESOS_PORT=505$i" \
     -e "MESOS_SWITCH_USER=false" \
-    -e "MESOS_RESOURCES=ports(*):[920$i-920$i,930$i-930$i];cpus(*):$cpus;mem(*):$mem" \
+    -e "MESOS_RESOURCES=cpus(*):$cpus;mem(*):$mem" \
     -e "MESOS_ISOLATOR=cgroups/cpu,cgroups/mem" \
     -e "MESOS_EXECUTOR_REGISTRATION_TIMEOUT=5mins" \
     -e "MESOS_CONTAINERIZERS=docker,mesos" \
@@ -194,10 +197,10 @@ function start_slaves {
     -v /usr/lib/x86_64-linux-gnu/libapparmor.so.1:/usr/lib/x86_64-linux-gnu/libapparmor.so.1:ro \
     $DOCKER_USER/$SLAVE_IMAGE $start_slave_command
 
-  if [[ -n $INSTALL_HDFS ]]; then
-    docker exec -it "$SLAVE_CONTAINER_NAME"_"$i" /bin/bash /var/hadoop/hadoop_setup.sh SLAVE
-    docker exec -it "$SLAVE_CONTAINER_NAME"_"$i" /usr/local/sbin/hadoop-daemon.sh --script hdfs start datanode
-  fi
+    if [[ -n $INSTALL_HDFS ]]; then
+      docker exec -it "$SLAVE_CONTAINER_NAME"_"$i" /bin/bash /var/hadoop/hadoop_setup.sh SLAVE
+      docker exec -it "$SLAVE_CONTAINER_NAME"_"$i" /usr/local/sbin/hadoop-daemon.sh --script hdfs start datanode
+    fi
 
   done
 }
@@ -205,23 +208,25 @@ function start_slaves {
 
 function show_help {
 
-cat<< EOF
-This script creates a mini mesos cluster for testing purposes.
-Usage: $SCRIPT [OPTIONS]
+  cat<< EOF
+  This script creates a mini mesos cluster for testing purposes.
+  Usage: $SCRIPT [OPTIONS]
 
-eg: ./run.sh --number-of-slaves 3 --image-version 0.0.1
+  eg: ./run.sh --number-of-slaves 3 --image-version 0.0.1
 
-Options:
+  Options:
 
--h|--help prints this message.
--q|quiet no output is shown to the console regarding execution status.
---number-of-slaves number of slave mesos containers to create (optional, defaults to 1).
---hadoop-binary-file  the hadoop binary file to use in docker configuration (optional, if not present tries to download the image).
---spark-binary-file  the hadoop binary file to use in docker configuration (optional, if not present tries to download the image).
---image-version  the image version to use for the containers (optional, defaults to the latest hardcoded value).
---with-hdfs installs hdfs on the mesos master and slaves
---mem-th the percentage of the host cpus to use for slaves. Default: 0.5.
---cpu-th the percentage of the host memory to use for slaves. Default: 0.5.
+  -h|--help prints this message.
+  -q|quiet no output is shown to the console regarding execution status.
+  --number-of-slaves number of slave mesos containers to create (optional, defaults to 1).
+  --hadoop-binary-file  the hadoop binary file to use in docker configuration (optional, if not present tries to download the image).
+  --spark-binary-file  the hadoop binary file to use in docker configuration (optional, if not present tries to download the image).
+  --image-version  the image version to use for the containers (optional, defaults to the latest hardcoded value).
+  --with-hdfs installs hdfs on the mesos master and slaves
+  --mem-th the percentage of the host cpus to use for slaves. Default: 0.5.
+  --cpu-th the percentage of the host memory to use for slaves. Default: 0.5.
+  --mesos-master-config parameters passed to the mesos master (specific only and common with slave).
+  --mesos-slave-config parameters passed to the mesos slave(specific only an docmmon with the master).
 EOF
 }
 
@@ -298,7 +303,24 @@ function parse_args {
       shift 1
       continue
       ;;
-
+      --mesos-master-config)       # Takes an option argument, ensuring it has been specified.
+      if [ -n "$2" ]; then
+        MESOS_MASTER_CONFIG=$2
+        shift 2
+        continue
+      else
+        exitWithMsg '"--mesos-master-config" requires a non-empty option argument.\n'
+      fi
+      ;;
+      --mesos-slave-config)       # Takes an option argument, ensuring it has been specified.
+      if [ -n "$2" ]; then
+        MESOS_SLAVE_CONFIG=$2
+        shift 2
+        continue
+      else
+        exitWithMsg '"--mesos-slave-config" requires a non-empty option argument.\n'
+      fi
+      ;;
       --)              # End of all options.
       shift
       break
@@ -333,7 +355,7 @@ function printMsg {
 
 ################################## MAIN ####################################
 
-parse_args $@
+parse_args "$@"
 
 cat $SCRIPTPATH/message.txt
 
