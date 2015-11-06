@@ -205,6 +205,17 @@ echo $MESOS_SLAVE_CONFIG
   done
 }
 
+# $1 variable, $2 pattern, $3 file_in $4 file_out
+function replace_in_htmlfile_multi {
+  if [[ "$(uname)" == "Darwin" ]]; then
+    l_var="$1"
+  awk -v r="${l_var//$'\n'/\\n}" "{sub(/$2/,r)}1" $3 >  tmp_file && mv tmp_file $4
+  else
+    awk -v r="$1" "{gsub(/$2/,r)}1" $3 >  tmp_file && mv tmp_file $4
+  fi
+}
+
+
 function create_html {
 
 TOTAL_NODES=$(($NUMBER_OF_SLAVES + 1 ))
@@ -223,7 +234,8 @@ $HTML_SNIPPET
 
 <div class="alert alert-success" role="alert">Your cluster is up and running!</div>
 EOF
-awk -v r="$node_info" '{gsub(/REPLACE_NODES/,r)}1' $SCRIPTPATH/template.html >  tmp_file && mv tmp_file $SCRIPTPATH/index.html
+
+replace_in_htmlfile_multi "$node_info" "REPLACE_NODES" "template.html" "index.html"
 
 HDFS_SNIPPET_1=
 HDFS_SNIPPET_OUT=
@@ -234,6 +246,8 @@ HDFS_SNIPPET_OUT="<div> <a href=\"#\" id=\"hho_link\"> Hadoop Healthcheck output
 <div id=\"hho\" class=\"my_item\"><pre>$(docker exec -it spm_master hdfs dfsadmin -report)</pre></div>"
 fi
 
+MESOS_OUTPUT="$(curl -s http://$(docker_ip):5050/master/state.json | python -m json.tool)"
+
 read -d '' dash_info <<EOF
 <div> <a data-toggle="tooltip" data-placement="top" data-original-title="$(docker_ip):5050" href="http://$(docker_ip):5050">Mesos UI</a> </div>
 $HDFS_SNIPPET_1
@@ -242,12 +256,11 @@ $HDFS_SNIPPET_1
 
 $HDFS_SNIPPET_OUT
 <div> <a href="#" id="mho_link"> Mesos Healthcheck output </a></div>
-<div id="mho"><pre>$(curl -s http://$(docker_ip):5050/master/state.json | python -m json.tool) </pre></div>
+<div id="mho"><pre>$MESOS_OUTPUT</pre></div>
 <div style="margin-top:10px;" class="alert alert-success" role="alert">Your cluster is up and running!</div>
 EOF
 
-awk -v r="$dash_info" '{gsub(/REPLACE_DASHBOARDS/,r)}1' $SCRIPTPATH/index.html >  tmp_file && mv tmp_file $SCRIPTPATH/index.html
-
+replace_in_htmlfile_multi "$dash_info" "REPLACE_DASHBOARDS" "index.html" "index.html"
 
 }
 

@@ -9,6 +9,8 @@ The project sets up a cluster of the following components using docker:
 
 ## Setup your host machine
 
+You will need: wget and python installed.
+
 **_Install the latest docker version_**  then execute (only for ubuntu):
 
 ```sh
