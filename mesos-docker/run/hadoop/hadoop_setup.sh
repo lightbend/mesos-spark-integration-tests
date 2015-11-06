@@ -23,6 +23,8 @@ mkdir -p /root/data/namenode
 
 tar -zxf /var/hadoop/hadoop-2.6.0.tar.gz -C /var/hadoop/
 cp -r /var/hadoop/hadoop-2.6.0/* /usr/local/
+#echo "0.0.0.0" > /usr/local/etc/hadoop/slaves
+
 files=( "core-site.xml" "hdfs-site.xml" )
 
 for i in "${files[@]}"
@@ -31,26 +33,29 @@ do
   cp /var/hadoop/config/$i /usr/local/etc/hadoop/$i
 done
 
+#Replacing the hostname of namenode with docker ip so its accessible outside
+sed -i -- "s/REPLACE_WITH_DOCKER_IP/$DOCKER_IP/g" /usr/local/etc/hadoop/core-site.xml
+
 if [ "$1" = "SLAVE" ]; then
   read -d '' rep_text <<EOF
   <property>
   <name>dfs.namenode.servicerpc-address</name>
-  <value>localhost:8020</value>
+  <value>$DOCKER_IP:8020</value>
   </property>
 
   <property>
   <name>dfs.datanode.address</name>
-  <value>localhost:$IT_DFS_DATANODE_ADDRESS_PORT</value>
+  <value>$DOCKER_IP:$IT_DFS_DATANODE_ADDRESS_PORT</value>
   </property>
 
   <property>
   <name>dfs.datanode.http.address</name>
-  <value>localhost:$IT_DFS_DATANODE_HTTP_ADDRESS_PORT</value>
+  <value>$DOCKER_IP:$IT_DFS_DATANODE_HTTP_ADDRESS_PORT</value>
   </property>
 
   <property>
   <name>dfs.datanode.ipc.address</name>
-  <value>localhost:$IT_DFS_DATANODE_IPC_ADDRESS_PORT</value>
+  <value>$DOCKER_IP:$IT_DFS_DATANODE_IPC_ADDRESS_PORT</value>
   </property>
 EOF
 else
