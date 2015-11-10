@@ -86,6 +86,7 @@ function start_master {
   -e "MESOS_WORK_DIR=/tmp/mesos" \
   -e "MESOS_CONTAINERIZERS=docker,mesos" \
   -e "DOCKER_IP=$dip" \
+  -e "IT_DFS_DATANODE_ADDRESS_PORT=50010" \
   --privileged=true \
   --pid=host \
   --expose=5050 \
@@ -157,7 +158,7 @@ function start_slaves {
 echo $MESOS_SLAVE_CONFIG
 
   dip=$(docker_ip)
-  start_slave_command="/usr/sbin/mesos-slave --master=$dip:5050 $MESOS_SLAVE_CONFIG"
+  start_slave_command="/usr/sbin/mesos-slave --master=$dip:5050 --ip=$dip $MESOS_SLAVE_CONFIG"
   number_of_ports=3
   for i in `seq 1 $NUMBER_OF_SLAVES`;
   do
@@ -209,9 +210,9 @@ echo $MESOS_SLAVE_CONFIG
 function replace_in_htmlfile_multi {
   if [[ "$(uname)" == "Darwin" ]]; then
     l_var="$1"
-  awk -v r="${l_var//$'\n'/\\n}" "{sub(/$2/,r)}1" $3 >  tmp_file && mv tmp_file $4
+  awk -v r="${l_var//$'\n'/\\n}" "{sub(/$2/,r)}1" $3 >  $SCRIPTPATH/tmp_file && mv $SCRIPTPATH/tmp_file $4
   else
-    awk -v r="$1" "{gsub(/$2/,r)}1" $3 >  tmp_file && mv tmp_file $4
+    awk -v r="$1" "{gsub(/$2/,r)}1" $3 >  $SCRIPTPATH/tmp_file && mv $SCRIPTPATH/tmp_file $4
   fi
 }
 
@@ -235,7 +236,7 @@ $HTML_SNIPPET
 <div class="alert alert-success" role="alert">Your cluster is up and running!</div>
 EOF
 
-replace_in_htmlfile_multi "$node_info" "REPLACE_NODES" "template.html" "index.html"
+replace_in_htmlfile_multi "$node_info" "REPLACE_NODES" "$SCRIPTPATH/template.html" "$SCRIPTPATH/index.html"
 
 HDFS_SNIPPET_1=
 HDFS_SNIPPET_OUT=
@@ -260,7 +261,7 @@ $HDFS_SNIPPET_OUT
 <div style="margin-top:10px;" class="alert alert-success" role="alert">Your cluster is up and running!</div>
 EOF
 
-replace_in_htmlfile_multi "$dash_info" "REPLACE_DASHBOARDS" "index.html" "index.html"
+replace_in_htmlfile_multi "$dash_info" "REPLACE_DASHBOARDS" "$SCRIPTPATH/index.html" "$SCRIPTPATH/index.html"
 
 }
 
@@ -448,7 +449,7 @@ printMsg "Mesos cluster dashboard url http://$(docker_ip):5050"
 if [[ -n $INSTALL_HDFS ]]; then
   printMsg "Hdfs cluster started!"
   printMsg "Hdfs cluster dashboard url http://$(docker_ip):50070"
-  printMsg "Hdfs usrl http://$(docker_ip):8020"
+  printMsg "Hdfs usrl hdfs://$(docker_ip):8020"
 fi
 
 print_host_ip

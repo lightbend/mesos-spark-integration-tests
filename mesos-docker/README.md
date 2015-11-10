@@ -72,6 +72,12 @@ At the end of the script run a message is printed with url of the master for exa
 
 Mesos cluster dashboard url http://172.17.42.1:5050
 
+Also an html file is generated **index.html** which allows to access
+several dashboards of the cluster components along with node info. See sample view
+bellow:
+
+![sample](./sample.png)
+
 ### HDFS
 
 Using the --with-hdfs flag you can setup a full hdfs system:
@@ -122,6 +128,7 @@ We give next which values are pre-configured through env variables:
 ```
 
 ```sh
+#slave(s):
 -e "MESOS_PORT=505$i" \
 -e "MESOS_SWITCH_USER=false" \
 -e "MESOS_RESOURCES=cpus(*):$cpus;mem(*):$mem" \
@@ -139,6 +146,7 @@ Connecting from your host to the cluster is simple. To connect form spark repl
 for example you need (assuming you are under the spark installation dir):
 ```sh
 export SPARK_EXECUTOR_URI=/var/spark/spark-1.5.1-bin-hadoop2.6.tgz
+
 ./spark-shell --master mesos://172.17.42.1:5050  
 ```
 If you assign one cpu per slave then you need to set:
@@ -146,6 +154,30 @@ If you assign one cpu per slave then you need to set:
 
 because mesosExecutor reserves by default 1 cpu and otherwise the job will not
 have enough resources.
+
+Another way to use the cluster is to submit a regular spark job.
+For example you could do in client mode:
+```sh
+export SPARK_EXECUTOR_URI=/var/spark/spark-1.5.1-bin-hadoop2.6.tgz
+
+./bin/spark-submit   --class org.apache.spark.examples.SparkPi   --master mesos://172.17.42.1:5050  /path_to_spark_home/lib/spark-examples-1.5.1-hadoop2.6.0.jar  100
+```
+Or in cluster mode:
+
+```sh
+export SPARK_EXECUTOR_URI=/var/spark/spark-1.5.1-bin-hadoop2.6.tgz
+
+#start mesos dispatcher
+ export SPARK_MESOS_DISPATCHER_HOST=172.17.42.1
+./sbin/start-mesos-dispatcher.sh --master mesos://172.17.42.1:5050
+
+#copy job jar to hdfs
+docker cp  /path_to_spark_home/lib/spark-examples-1.5.1-hadoop2.6.0.jar spm_master:/var/spark
+docker exec -it spm_master hadoop fs -copyFromLocal /var/spark/spark-examples-1.5.1-hadoop2.6.0.jar hdfs://172.17.42.1:8020/examples.jar
+
+#submit the job
+./bin/spark-submit --class org.apache.spark.examples.SparkPi --master mesos://172.17.42.1:7077 --deploy-mode cluster  hdfs://172.17.42.1:8020/examples.jar  100
+```
 
 ### Mesos Roles And Attributes with Spark
 
