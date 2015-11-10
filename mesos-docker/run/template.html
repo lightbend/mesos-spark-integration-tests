@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
+  <title>Spark with Mesos on Docker</title>
+
+  <!-- Bootstrap -->
+  <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/css/bootstrap-theme.min.css">
+
+  <style type="text/css">
+  .info { margin-top: 20px;}
+  .info_content div{ margin-top: :1em; margin-bottom: 1em}
+  .my_item{ margin-bottom: 1em}
+
+  </style>
+
+  <script src="http://code.jquery.com/jquery.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.5/js/bootstrap.min.js"></script>
+  <script type="text/javascript">
+  jQuery(document).ready(function ($) {
+    $('[data-toggle="tooltip"]').tooltip();
+    $('#tabs').tab();
+    $("#hho").addClass('hidden');
+      $("#mho").addClass('hidden');
+    $('#hho_link').click(function() {
+      $("#hho").toggleClass('hidden');
+    });
+    $('#mho_link').click(function() {
+      $("#mho").toggleClass('hidden');
+    });
+  });
+
+
+  </script>
+
+</head>
+<body>
+  <div class="container">
+    <div class="row">
+      <div class="span12">
+        <h1 style="padding-bottom:20px" >Spark/Mesos on Docker UI</h1>
+
+        <ul class="nav nav-tabs" id="tabs">
+          <li class="active"><a href="#dashboards" data-toggle="tab" > <i class="glyphicon glyphicon-dashboard"> </i> Dashboards</a></li>
+          <li ><a href="#nodes" data-toggle="tab">Nodes</a></li>
+        </ul>
+
+        <div class="tab-content">
+
+          <div class="tab-pane active" id="dashboards">
+            <div class="info"> REPLACE_DASHBOARDS </div>
+
+          </div>
+          <div class="tab-pane" id="nodes" >
+
+            <div  class="info">REPLACE_NODES </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
