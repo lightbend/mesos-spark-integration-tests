@@ -67,7 +67,6 @@ object Utils {
 
   def submitSparkJob(jobDesc: String, jobArgs: String*)(implicit config: Config) = {
     val cmd: Seq[String] = Seq(jobDesc) ++ jobArgs
-    //TODO: read the mesos binary file location from parameter
     val proc = Process(cmd.mkString(" "), None,
       "MESOS_NATIVE_JAVA_LIBRARY" -> config.getString("mesos.native.library.location"),
       "SPARK_EXECUTOR_URI" -> config.getString("spark.executor.tgz.location")
@@ -95,9 +94,8 @@ object Utils {
       s"--host ${InetAddress.getLocalHost().getHostName()}",
       s"--port ${dispatcherPort}"
     )
-    //TODO: read the mesos binary file location from parameter
     val proc = Process(mesosStartDispatcherDesc.mkString(" "), None,
-      "MESOS_NATIVE_JAVA_LIBRARY" -> "/usr/local/lib/libmesos.dylib",
+      "MESOS_NATIVE_JAVA_LIBRARY" -> config.getString("mesos.native.library.location"),
       "SPARK_EXECUTOR_URI" -> sparkExecutorPath
     )
     proc.lines_!.foreach(line => println(line))
