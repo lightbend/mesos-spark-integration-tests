@@ -16,7 +16,7 @@ libraryDependencies ++= Seq(
    ExclusionRule(organization = "commons-beanutils"),
    ExclusionRule(organization = "org.apache.hadoop", name ="hadoop-yarn-api")),
  "org.scalatest"     %% "scalatest"       % "2.2.4",
- "com.typesafe"      %  "config"          % "1.3.0"
+ "com.typesafe"      %  "config"          % "1.2.1"
 )
 
 val mit = inputKey[Unit]("Runs spark/mesos integration tests.")
