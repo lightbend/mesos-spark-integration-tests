@@ -5,22 +5,27 @@ import com.typesafe.config.ConfigFactory
 import java.net.URL
 import java.io.InputStreamReader
 
+import org.typesafe.spark.mesos.tests.MesosIntTestHelper
+
 object MesosState extends Enumeration {
   type MesosState = Value
   val TASK_RUNNING, TASK_FINISHED = Value
 }
 import MesosState._
 
-case class MesosCluster(frameworks: List[MesosFramework])
+case class MesosCluster(numberOfSlaves: Int, frameworks: List[MesosFramework]) {
+  def sparkFramework: Option[MesosFramework] =
+    frameworks.find(f => f.name.startsWith(MesosIntTestHelper.SPARK_FRAMEWORK_PREFIX))
+}
 
-case class MesosFramework (frameworkId: String, tasks: List[MesosTask])
 
 object MesosCluster {
   def apply(c: Config): MesosCluster = {
     import collection.JavaConverters._
     val frameworks: List[MesosFramework] =
       c.getConfigList("frameworks").asScala.map(MesosFramework.apply)(collection.breakOut)
-    MesosCluster(frameworks)
+    val slaveCount = c.getConfigList("slaves").size()
+    MesosCluster(slaveCount, frameworks)
   }
 
   def apply(url: URL): MesosCluster = {
@@ -32,6 +37,8 @@ object MesosCluster {
   }
 }
 
+case class Resources(cpu: Int, disk: Double, mem: Double)
+case class MesosFramework (frameworkId: String, name: String, tasks: List[MesosTask], resources: Resources)
 
 object MesosFramework {
   def apply(c: Config): MesosFramework = {
@@ -40,7 +47,13 @@ object MesosFramework {
       MesosTask(_)
     }(collection.breakOut)
     val frameworkId = c.getString("id")
-    MesosFramework(frameworkId, tasks)
+    val frameworkName = c.getString("name")
+    val resources = Resources(
+      c.getInt("resources.cpus"),
+      c.getInt("resources.disk"),
+      c.getInt("resources.mem"))
+
+    MesosFramework(frameworkId, frameworkName, tasks, resources)
   }
 }
 

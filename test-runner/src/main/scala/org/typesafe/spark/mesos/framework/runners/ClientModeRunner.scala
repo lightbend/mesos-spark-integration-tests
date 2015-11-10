@@ -31,7 +31,8 @@ object ClientModeRunner {
         applicationJarPath,
         mesosConsoleUrl,
         "client",
-        "localhost")
+        "localhost",
+        config.getString("test.runner.port"))
     }
   }
 

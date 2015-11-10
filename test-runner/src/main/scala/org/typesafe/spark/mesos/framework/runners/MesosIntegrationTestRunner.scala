@@ -14,9 +14,14 @@ object MesosIntegrationTestRunner {
 
     val result = ClientModeRunner.run(args) ++ ClusterModeRunner.run(args)
 
-    //TODO: Generate some JUnit style report for CI
     printMsg("TestResults:")
     result.foreach(printMsg)
+
+    //TODO: Generate some JUnit style report for CI
+    if (result.exists(_.startsWith("TestFailed"))) {
+      System.exit(1)
+    }
+
   }
 
 

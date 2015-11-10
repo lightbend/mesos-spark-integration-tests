@@ -12,8 +12,11 @@ libraryDependencies ++= Seq(
  "org.apache.spark"  %% "spark-core"      % sparkVersion  % "provided" withSources(),
  "org.apache.spark"  %% "spark-streaming" % sparkVersion  % "provided" withSources(),
  "org.apache.spark"  %% "spark-sql"       % sparkVersion  % "provided" withSources(),
+ "org.apache.hadoop" % "hadoop-client"    % "2.6.1" excludeAll(
+   ExclusionRule(organization = "commons-beanutils"),
+   ExclusionRule(organization = "org.apache.hadoop", name ="hadoop-yarn-api")),
  "org.scalatest"     %% "scalatest"       % "2.2.4",
- "com.typesafe"      %  "config"          % "1.3.0"
+ "com.typesafe"      %  "config"          % "1.2.1"
 )
 
 val mit = inputKey[Unit]("Runs spark/mesos integration tests.")

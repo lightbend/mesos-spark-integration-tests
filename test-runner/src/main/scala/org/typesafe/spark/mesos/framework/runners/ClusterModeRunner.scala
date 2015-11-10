@@ -17,17 +17,14 @@ object ClusterModeRunner {
     val applicationJarPath = args(2)
     val mesosConsoleUrl = mesosMasterUrl.replaceAll("mesos", "http")
 
-    //host location mounted to docker
-    val sharedHostLocation = config.getString("mounted.host.location")
-    //docker location mounted with the above host location
-    val dockerLocation = config.getString("docker.location")
-
     val dockerHostAddress = config.getString("docker.host.ip")
 
+    val hdfsUri = config.getString("hdfs.uri")
+
     //copying application jar to docker location so mesos slaves can pick it up
-    val dockerJarLocation = copyApplicationJar(applicationJarPath, sharedHostLocation, dockerLocation)
-    printMsg(s"copying application jar file to $sharedHostLocation")
-    printMsg(s"In docker its available under $dockerJarLocation")
+    val hdfsJarLocation = Utils.copyApplicationJar(args(2), hdfsUri)
+
+    printMsg(s"Application jar file is copied to HDFS $hdfsJarLocation")
 
     //make sure we kill any running mesos frameworks. Right now if we run
     //mesos dispatcher it doesn't die automatically
@@ -48,10 +45,11 @@ object ClusterModeRunner {
         s"--deploy-mode cluster")
 
       submitSparkJob(sparkSubmitJobDesc.mkString(" "),
-        dockerJarLocation,
+        hdfsJarLocation,
         mesosConsoleUrl,
         "cluster",
-        dockerHostAddress)
+        dockerHostAddress,
+        config.getString("test.runner.port"))
     }
   }
 

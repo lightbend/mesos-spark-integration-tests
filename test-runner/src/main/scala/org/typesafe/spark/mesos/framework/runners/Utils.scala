@@ -1,41 +1,30 @@
 package org.typesafe.spark.mesos.framework.runners
 
-import java.io.{PrintStream, File}
-import java.net.{ServerSocket, Socket, InetAddress}
-import java.nio.file.Files
+import java.io.{FileInputStream, File}
+import java.net.{InetAddress, ServerSocket, Socket}
 import java.util.concurrent._
 
 import com.typesafe.config.Config
 import mesostest.mesosstate.MesosCluster
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs._
 
-import scala.annotation.tailrec
-import scala.io.{BufferedSource, Source}
+import scala.io.BufferedSource
 import scala.sys.process.Process
 
 object Utils {
 
 
-  def sendMessage[A](runnerAddress: InetAddress, msg: A): Unit = {
-    val socket = new Socket(runnerAddress, 8888)
-    val writer = new PrintStream(socket.getOutputStream)
-    try {
-      writer.println(msg)
-    } finally {
-      writer.flush()
-      writer.close()
-      socket.close()
-    }
-  }
-
-  def runSparkJobAndCollectResult(job: => Unit): List[String] = {
+  def runSparkJobAndCollectResult(job: => Unit)(implicit config: Config): List[String] = {
     val pool = Executors.newSingleThreadExecutor()
-    val server = new ServerSocket(8888)
+    val server = new ServerSocket(config.getInt("test.runner.port"))
     val results: Future[List[String]] = startServerForResults(server, pool)
+    val timeout = config.getDuration("test.timeout", TimeUnit.MILLISECONDS)
     //run the job
     try {
       job
       //return the result of the test
-      results.get()
+      results.get(timeout, TimeUnit.MILLISECONDS)
     } finally {
       server.close()
       pool.shutdown()
@@ -54,15 +43,9 @@ object Utils {
 
     pool.submit(new Callable[List[String]] {
       override def call(): List[String] = {
-        var results: List[String] = Nil
-        var done = false
-        while(!done) {
-          val socket = server.accept()
-          val taskResults = handleConnection(socket)
-          done = taskResults.exists(_.contains("<DONE/>"))
-          results ++= taskResults
-        }
-        results
+        val socket = server.accept()
+        val taskResults = handleConnection(socket)
+        taskResults
       }
     })
   }
@@ -84,7 +67,6 @@ object Utils {
 
   def submitSparkJob(jobDesc: String, jobArgs: String*)(implicit config: Config) = {
     val cmd: Seq[String] = Seq(jobDesc) ++ jobArgs
-    //TODO: read the mesos binary file location from parameter
     val proc = Process(cmd.mkString(" "), None,
       "MESOS_NATIVE_JAVA_LIBRARY" -> config.getString("mesos.native.library.location"),
       "SPARK_EXECUTOR_URI" -> config.getString("spark.executor.tgz.location")
@@ -112,9 +94,8 @@ object Utils {
       s"--host ${InetAddress.getLocalHost().getHostName()}",
       s"--port ${dispatcherPort}"
     )
-    //TODO: read the mesos binary file location from parameter
     val proc = Process(mesosStartDispatcherDesc.mkString(" "), None,
-      "MESOS_NATIVE_JAVA_LIBRARY" -> "/usr/local/lib/libmesos.dylib",
+      "MESOS_NATIVE_JAVA_LIBRARY" -> config.getString("mesos.native.library.location"),
       "SPARK_EXECUTOR_URI" -> sparkExecutorPath
     )
     proc.lines_!.foreach(line => println(line))
@@ -122,14 +103,23 @@ object Utils {
     s"mesos://${InetAddress.getLocalHost().getHostName()}:${dispatcherPort}"
   }
 
-  def copyApplicationJar(jar: String, hostLocation: String, dockerLocation: String) = {
+  def copyApplicationJar(jar: String, uri: String) = {
+    System.setProperty("HADOOP_USER_NAME", "root")
     val fileName = new File(jar).getName
-    //remove existing copy
-    Process(s"rm ${hostLocation}/${fileName}").!
-    //copy the application jar file
-    Process(s"cp ${jar} ${hostLocation}").!
+    val path = new Path("/app/" + fileName)
+    val conf = new Configuration()
+    conf.set("fs.defaultFS", uri)
+    val fs = FileSystem.get(conf)
+    val os: FSDataOutputStream = fs.create(path, 1.toShort)
+    import org.apache.commons.io.IOUtils
+    val input = new FileInputStream(jar)
+    IOUtils.copy(input, os)
 
-    s"$dockerLocation/${fileName}"
+    input.close()
+    os.close()
+    fs.close()
+
+    s"$uri/app/$fileName"
   }
 
   def stopMesosDispatcher(sparkHome: String): Int = {

@@ -1,35 +1,44 @@
 package org.typesafe.spark.mesos.tests
 
-import java.net.InetAddress
+import org.apache.spark.{SparkConf, SparkContext}
+import org.scalatest.FunSuite
 
-import org.apache.spark.{Accumulable, SparkConf, SparkContext}
-import org.scalatest.exceptions.TestFailedException
-import org.typesafe.spark.mesos.framework.runners.{TestResult, Utils}
+object MesosIntTestHelper {
+  import org.scalatest.time.SpanSugar._
 
-trait MesosIntTestHelper {
+  val SPARK_FRAMEWORK_PREFIX = "mit-spark"
+  val TEST_TIMEOUT = 300 seconds
+}
 
-  def runSparkTest(name: String, runnerAddress: InetAddress, ps: (String, String)*)(t: (SparkContext) => Unit) {
+trait MesosIntTestHelper { self: FunSuite =>
 
-    val sparkConf = new SparkConf()
-      .setAppName("Mesos integration test")
-      .set("spark.executor.memory", "512mb")
+  import MesosIntTestHelper._
+  /**
+   * Creates a SparkContext based on the given properties and reports test result to runner
+   * @param name name of the job and mesos framework. The SPARK_FRAMEWORK_PREFIX-$name is used as the Spark
+   *             application name.
+   * @param ps  key-value pairs of Spark configuration
+   * @param t function that contains the testcase
+   * @return ()
+   */
+  def runSparkTest(name: String, ps: (String, String)*)(t: (SparkContext) => Unit) {
+    test(name) {
+      val sparkConf = new SparkConf()
+        .setAppName(s"$SPARK_FRAMEWORK_PREFIX-$name")
+        .set("spark.executor.memory", "256mb")
+        .set("spark.app.id", "mit-spark")
+      for (
+        (key, value) <- ps
+      ) {
+        sparkConf.set(key, value)
+      }
 
-    for (
-      (key, value) <- ps
-    ) {
-      sparkConf.set(key, value)
-    }
-
-    val sc = new SparkContext(sparkConf)
-    try {
-      t(sc)
-      Utils.sendMessage(runnerAddress, TestResult(name, true))
-    } catch {
-      case e: TestFailedException =>
-        Utils.sendMessage(runnerAddress, TestResult(name, false, Some(e.getMessage)))
-        throw e
-    } finally {
-      sc.stop()
+      val sc = new SparkContext(sparkConf)
+      try {
+        t(sc)
+      } finally {
+        sc.stop()
+      }
     }
   }
 }
