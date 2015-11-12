@@ -155,8 +155,6 @@ function get_mem {
 
 function start_slaves {
 
-echo $MESOS_SLAVE_CONFIG
-
   dip=$(docker_ip)
   start_slave_command="/usr/sbin/mesos-slave --master=$dip:5050 --ip=$dip $MESOS_SLAVE_CONFIG"
   number_of_ports=3
@@ -262,6 +260,20 @@ $HDFS_SNIPPET_OUT
 EOF
 
 replace_in_htmlfile_multi "$dash_info" "REPLACE_DASHBOARDS" "$SCRIPTPATH/index.html" "$SCRIPTPATH/index.html"
+
+}
+
+function remove_container_by_name_prefix {
+
+  if [[ "$(uname)" == "Darwin" ]]; then
+    input="$(docker ps -a | grep $1 | awk '{print $1}')"
+
+    if [[ -n "$input"  ]]; then
+      echo "$input" | xargs docker rm -f
+    fi
+  else
+    docker ps -a | grep $1 | awk '{print $1}' | xargs -r docker rm -f
+  fi
 
 }
 
@@ -428,10 +440,10 @@ mkdir -p $SCRIPTPATH/binaries
 #clean up containers
 
 printMsg "Stopping and removing master container(s)..."
-docker ps -a | grep $MASTER_CONTAINER_NAME | awk '{print $1}' | xargs docker rm -f
+remove_container_by_name_prefix $MASTER_CONTAINER_NAME
 
 printMsg "Stopping and removing slave container(s)..."
-docker ps -a | grep $SLAVE_CONTAINER_NAME | awk '{print $1}' | xargs docker rm -f
+remove_container_by_name_prefix $SLAVE_CONTAINER_NAME 
 
 printMsg "Getting binaries..."
 get_binaries

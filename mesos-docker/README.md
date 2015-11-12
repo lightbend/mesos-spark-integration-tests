@@ -179,6 +179,16 @@ docker exec -it spm_master hadoop fs -copyFromLocal /var/spark/spark-examples-1.
 ./bin/spark-submit --class org.apache.spark.examples.SparkPi --master mesos://172.17.42.1:7077 --deploy-mode cluster  hdfs://172.17.42.1:8020/examples.jar  100
 ```
 
+### Destroying the cluster
+
+Every time you create a new cluster the script by default removes any previous one running.
+If you want to explicitly remove a running cluster just use the cluster_remove.sh
+script:
+
+```sh
+./cluster_remove.sh
+```
+
 ### Mesos Roles And Attributes with Spark
 
 You can configure roles for slaves and attributes as follows:
