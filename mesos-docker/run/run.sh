@@ -38,14 +38,6 @@ CPU_TH=$RESOURCE_THRESHOLD
 SHARED_FOLDER="$HOME/temp"
 
 ################################ FUNCTIONS #####################################
-function clean_up_container {
-  echo "Stopping container:$1"
-  docker stop $1
-  echo "Stopping container:$1..."
-  docker rm $1
-
-}
-
 function docker_ip {
   if [[ "$(uname)" == "Darwin" ]]; then
     docker-machine ip default
@@ -63,6 +55,28 @@ function print_host_ip {
     printMsg "The IP address of the host inside docker $hostIpAddr"
   else
     printMsg "The IP address of the host inside docker $(docker_ip)"
+  fi
+}
+
+function check_if_service_is_running {
+
+  COUNTER=0
+  while ! nc -z $dip $2; do
+    echo -ne "waiting for $1 at port $2...$COUNTER\r"
+    sleep 1
+    let COUNTER=COUNTER+1
+  done
+}
+
+function check_if_container_is_up {
+
+  printMsg "Checking if container $1 is up..."
+  #wait to avoid temporary running window...
+  sleep 1
+  if [[ "$(docker inspect -f {{.State.Running}} $1)" = "false" ]]; then
+    echo >&2 "$1 container failed to start...  Aborting."; exit 1;
+  else
+    printMsg "Container $1 is up..."
   fi
 }
 
@@ -96,6 +110,10 @@ function start_master {
   -v "$SCRIPTPATH/hadoop":/var/hadoop \
   -v "$SPARK_BINARY_PATH":/var/spark/$SPARK_FILE  $HADOOP_VOLUME \
   $DOCKER_USER/$MASTER_IMAGE $start_master_command
+
+  check_if_container_is_up $MASTER_CONTAINER_NAME
+
+  check_if_service_is_running mesos-master 5050
 
   if [[ -n $INSTALL_HDFS ]]; then
     docker exec -it $MASTER_CONTAINER_NAME /bin/bash /var/hadoop/hadoop_setup.sh
@@ -195,6 +213,9 @@ function start_slaves {
     -v "$SHARED_FOLDER":/app:ro \
     -v /usr/lib/x86_64-linux-gnu/libapparmor.so.1:/usr/lib/x86_64-linux-gnu/libapparmor.so.1:ro \
     $DOCKER_USER/$SLAVE_IMAGE $start_slave_command
+
+    check_if_container_is_up "$SLAVE_CONTAINER_NAME"_"$i"
+    check_if_service_is_running mesos-slave $((5050 + $i))
 
     if [[ -n $INSTALL_HDFS ]]; then
       docker exec -it "$SLAVE_CONTAINER_NAME"_"$i" /bin/bash /var/hadoop/hadoop_setup.sh SLAVE
@@ -443,7 +464,7 @@ printMsg "Stopping and removing master container(s)..."
 remove_container_by_name_prefix $MASTER_CONTAINER_NAME
 
 printMsg "Stopping and removing slave container(s)..."
-remove_container_by_name_prefix $SLAVE_CONTAINER_NAME 
+remove_container_by_name_prefix $SLAVE_CONTAINER_NAME
 
 printMsg "Getting binaries..."
 get_binaries
