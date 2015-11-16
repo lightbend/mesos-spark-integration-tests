@@ -86,7 +86,7 @@ function start_master {
   dip=$(docker_ip)
   start_master_command="/usr/sbin/mesos-master --ip=$dip $MESOS_MASTER_CONFIG"
   if [[ -n $INSTALL_HDFS ]]; then
-    HADOOP_VOLUME="-v $HADOOP_BINARY_PATH:/var/hadoop/$HADOOP_FILE"
+    HADOOP_VOLUME="-v $HADOOP_BINARY_PATH:/var/tmp/$HADOOP_FILE"
   else
     HADOOP_VOLUME=
   fi
@@ -183,7 +183,7 @@ function start_slaves {
     mem=$(calcf $(($(get_mem)/$NUMBER_OF_SLAVES))*$MEM_TH)
 
     if [[ -n $INSTALL_HDFS ]]; then
-      HADOOP_VOLUME="-v $HADOOP_BINARY_PATH:/var/hadoop/$HADOOP_FILE"
+      HADOOP_VOLUME="-v $HADOOP_BINARY_PATH:/var/tmp/$HADOOP_FILE"
     else
       HADOOP_VOLUME=
     fi
