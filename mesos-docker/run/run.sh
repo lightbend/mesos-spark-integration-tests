@@ -129,7 +129,7 @@ function get_binaries {
   if [[ -z "${SPARK_BINARY_PATH}" ]]; then
     SPARK_BINARY_PATH=$SCRIPTPATH/binaries/$SPARK_FILE
     if [ ! -f "$SPARK_BINARY_PATH" ]; then
-      wget -P $SCRIPTPATH/binaries/ http://d3kbcqa49mib13.cloudfront.net/$SPARK_FILE
+      wget -P $SCRIPTPATH/binaries/ "http://mirror.switch.ch/mirror/apache/dist/spark/spark-$SPARK_VERSION/$SPARK_FILE"
     fi
   fi
 
