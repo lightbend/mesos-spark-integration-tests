@@ -101,6 +101,7 @@ function start_master {
   -e "MESOS_CONTAINERIZERS=docker,mesos" \
   -e "DOCKER_IP=$dip" \
   -e "IT_DFS_DATANODE_ADDRESS_PORT=50010" \
+  -e "USER=root" \
   --privileged=true \
   --pid=host \
   --expose=5050 \
@@ -200,6 +201,7 @@ function start_slaves {
     -e "IT_DFS_DATANODE_HTTP_ADDRESS_PORT=$((50100 + $(($i -1))*$number_of_ports + 2))" \
     -e "IT_DFS_DATANODE_IPC_ADDRESS_PORT=$((50100 + $(($i -1))*$number_of_ports + 3))" \
     -e "DOCKER_IP=$dip" \
+    -e "USER=root" \
     -d \
     --privileged=true \
     --pid=host \
