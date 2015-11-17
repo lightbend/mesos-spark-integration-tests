@@ -52,7 +52,7 @@ object MesosSlave {
     val slaveId = c.getString("id")
     import collection.JavaConverters._
     val reserved= c.getObject("reserved_resources").unwrapped().asScala.
-      map{x=>
+      map{ x =>
         val res=Resources(c.getInt(s"reserved_resources.${x._1}.cpus"),
           c.getInt(s"reserved_resources.${x._1}.mem"),
           c.getInt(s"reserved_resources.${x._1}.disk"))
@@ -81,7 +81,7 @@ object MesosSlave {
 object MesosFramework {
   def apply(c: Config): MesosFramework = {
     import collection.JavaConverters._
-    val tasks: List[MesosTask] = c.getConfigList("tasks").asScala.map{ 
+    val tasks: List[MesosTask] = c.getConfigList("tasks").asScala.map{
       MesosTask(_)
     }(collection.breakOut)
     val frameworkId = c.getString("id")
@@ -105,12 +105,12 @@ object MesosTask{
 }
 
 object StateDump {
-  
+
   def main(args: Array[String]): Unit = {
     val url = new URL(s"http://${args(0)}:5050/state.json")
-    
+
     val cluster = MesosCluster(url)
-    
+
     println(cluster)
   }
 
