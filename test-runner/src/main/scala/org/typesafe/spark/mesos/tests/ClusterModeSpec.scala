@@ -65,7 +65,7 @@ class ClusterModeSpec(mesosConsoleUrl: String, cfg:RoleConfigInfo)
 
     val m = MesosCluster.loadStates(mesosConsoleUrl)
 
-    assert(2 == m.frameworks.size, "no task should be running")
+    assert(2 == m.frameworks.size, "two frameworks should be running")
 
     assert(m.slaves.flatMap{x=> x.roleResources.map{y=> y.roleName}}.contains(cfg.role))
 
@@ -81,7 +81,7 @@ class ClusterModeSpec(mesosConsoleUrl: String, cfg:RoleConfigInfo)
 
     val m = MesosCluster.loadStates(mesosConsoleUrl)
 
-    assert(2 == m.frameworks.size, "no task should be running")
+    assert(2 == m.frameworks.size, "two frameworks should be running")
 
     assert(m.slaves.flatMap{x=> x.roleResources.map{y=> y.roleName}}.contains(cfg.role))
 
@@ -98,5 +98,3 @@ class ClusterModeSpec(mesosConsoleUrl: String, cfg:RoleConfigInfo)
   }
 
 }
-
-

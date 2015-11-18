@@ -64,9 +64,9 @@ class ClientModeSpec(mesosConsoleUrl: String, cfg: RoleConfigInfo)
     assert(15 == res)
 
     val m = MesosCluster.loadStates(mesosConsoleUrl)
-    assert(m.sparkFramework.isDefined, "only one framework should be running")
+    assert(m.sparkFramework.isDefined, "spark framework should be running")
 
-    assert(1 == m.sparkFramework.get.tasks.size, "no task should be running")
+    assert(1 == m.sparkFramework.get.tasks.size, "one framework should be running")
 
     assert(m.slaves.flatMap { x => x.roleResources.map { y => y.roleName } }.contains(cfg.role))
 
@@ -91,9 +91,9 @@ class ClientModeSpec(mesosConsoleUrl: String, cfg: RoleConfigInfo)
     assert(15 == res)
 
     val m = MesosCluster.loadStates(mesosConsoleUrl)
-    assert(m.sparkFramework.isDefined, "only one framework should be running")
+    assert(m.sparkFramework.isDefined, "spark framework should be running")
 
-    assert(0 == m.sparkFramework.get.tasks.size, "no task should be running")
+    assert(0 == m.sparkFramework.get.tasks.size, "one framework should be running")
 
     assert(m.slaves.flatMap { x => x.roleResources.map { y => y.roleName } }.contains(cfg.role))
 
@@ -102,4 +102,3 @@ class ClientModeSpec(mesosConsoleUrl: String, cfg: RoleConfigInfo)
   }
 
 }
-
