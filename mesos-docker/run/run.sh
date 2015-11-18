@@ -20,12 +20,12 @@ SLAVE_CONTAINER_NAME="spm_slave"
 MASTER_IMAGE="spark_mesos:$IMAGE_VERSION"
 SLAVE_IMAGE="spark_mesos:$IMAGE_VERSION"
 DOCKER_USER="skonto"
-NUMBER_OF_SLAVES=1
+NUMBER_OF_SLAVES=2
 SPARK_BINARY_PATH=
 HADOOP_BINARY_PATH=
 SPARK_VERSION=1.5.1
 HADOOP_VERSION_FOR_SPARK=2.6
-INSTALL_HDFS=
+INSTALL_HDFS=1
 IS_QUIET=
 SPARK_FILE=spark-$SPARK_VERSION-bin-hadoop$HADOOP_VERSION_FOR_SPARK.tgz
 MESOS_MASTER_CONFIG=
@@ -35,7 +35,6 @@ RESOURCE_THRESHOLD=1.0
 
 MEM_TH=$RESOURCE_THRESHOLD
 CPU_TH=$RESOURCE_THRESHOLD
-SHARED_FOLDER="$HOME/temp"
 
 # Make sure we know the name of the docker machine. Fail fast if we don't
 if [[ ("$(uname)" == "Darwin") && (-z $DOCKER_MACHINE_NAME) ]]; then
@@ -82,16 +81,20 @@ function generate_application_conf_file {
   mesos_native_lib="$(default_mesos_lib)"
 
   file_location="$SCRIPTPATH/../../test-runner" 
-  #\ here is important to bypass alias (if any)
+
   \cp "$SCRIPTPATH/mit-application.conf.template" "$file_location/mit-application.conf"
   sed -i -- "s@replace_with_mesos_lib@$mesos_native_lib@g" "$file_location/mit-application.conf"
   sed -i -- "s@replace_with_hdfs_uri@$hdfs_url@g" "$file_location/mit-application.conf"
   sed -i -- "s@replace_with_docker_host_ip@$host_ip@g" "$file_location/mit-application.conf"
   sed -i -- "s@replace_with_executor_tgz_location@$spark_tgz_file@g" "$file_location/mit-application.conf"
   
+  #remove any temp file generated
+  rm "$file_location/mit-application.conf--"
+
   printMsg "---------------------------"
   printMsg "Generated application.conf file can be found here: $file_location/mit-application.conf"
   printMsg "---------------------------"
+}
   
 function check_if_service_is_running {
 
@@ -249,7 +252,6 @@ function start_slaves {
     -v  /usr/local/bin/docker:/usr/local/bin/docker \
     -v /var/run/docker.sock:/var/run/docker.sock \
     -v "$SCRIPTPATH/hadoop":/var/hadoop \
-    -v "$SHARED_FOLDER":/app:ro \
     -v /usr/lib/x86_64-linux-gnu/libapparmor.so.1:/usr/lib/x86_64-linux-gnu/libapparmor.so.1:ro \
     $DOCKER_USER/$SLAVE_IMAGE $start_slave_command
 
@@ -353,7 +355,7 @@ function show_help {
   --hadoop-binary-file  the hadoop binary file to use in docker configuration (optional, if not present tries to download the image).
   --spark-binary-file  the hadoop binary file to use in docker configuration (optional, if not present tries to download the image).
   --image-version  the image version to use for the containers (optional, defaults to the latest hardcoded value).
-  --with-hdfs installs hdfs on the mesos master and slaves
+  --no-hdfs to ignore hdfs installation step
   --mem-th the percentage of the host cpus to use for slaves. Default: 0.5.
   --cpu-th the percentage of the host memory to use for slaves. Default: 0.5.
   --mesos-master-config parameters passed to the mesos master (specific only and common with slave).
@@ -429,8 +431,8 @@ function parse_args {
         exitWithMsg '"cpu_th" requires a non-empty option argument.\n'
       fi
       ;;
-      --with-hdfs)       # Takes an option argument, ensuring it has been specified.
-      INSTALL_HDFS=1
+      --no-hdfs)       # Takes an option argument, ensuring it has been specified.
+      INSTALL_HDFS=
       shift 1
       continue
       ;;
@@ -468,7 +470,7 @@ function parse_args {
   done
 
   if [[ -n $HADOOP_BINARY_PATH && -z $INSTALL_HDFS ]]; then
-    exitWithMsg "You need to specify the with-hdfs flag, otherwise --hadoop-binary-path is ignored"
+    exitWithMsg "Don't specify no-hdfs flag, --hadoop-binary-path is only used when hdfs is used which is default"
   fi
 }
 
