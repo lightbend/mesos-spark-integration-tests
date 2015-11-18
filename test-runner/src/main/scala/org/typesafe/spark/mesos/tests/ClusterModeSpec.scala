@@ -27,7 +27,7 @@ class ClusterModeSpec(mesosConsoleUrl: String, cfg:RoleConfigInfo)
 
     val sparkFramework = m.sparkFramework
     //get number of slaves as each slave will be running a long running Spark task
-    assert(1 * m.numberOfSlaves == sparkFramework.get.tasks.size, "One task should be running since its coarse grain mode")
+    assert(1 * m.numberOfSlaves == sparkFramework.get.tasks.size, "One task per slave should be running, since its coarse grain mode")
   }
 
   runSparkTest("spark.cores.max property should be honored in coarse grain mode",
