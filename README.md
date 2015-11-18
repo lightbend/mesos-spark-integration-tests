@@ -14,7 +14,7 @@ Create a cluster:
 
 ```sh
 #start a cluster
-mesos-docker/run/run.sh --with-hdfs --mesos-master-config "--roles=spark_role" --mesos-slave-config "--resources=disk(role):10000;cpus(role):4;mem(role):3000;cpus(*):4;mem(*):3000;disk(*):10000"
+mesos-docker/run/run.sh --with-hdfs --mesos-master-config "--roles=spark_role" --mesos-slave-config "--resources=disk(spark_role):10000;cpus(spark_role):4;mem(spark_role):3000;cpus(*):4;mem(*):3000;disk(*):10000"
 ```
 
 Check the output generated (index.html or console output) for config info to use next eg. mesos master url.
