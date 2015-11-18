@@ -55,15 +55,45 @@ function docker_ip {
 }
 
 function print_host_ip {
+  printMsg "IP address of the docker host machine is $(get_host_ip)"
+}
+
+function get_host_ip {
   if [[ "$(uname)" == "Darwin"  ]]; then
     #Getting the IP address of the host as it seen by docker container
     masterContainerId=$(docker ps -a | grep $MASTER_CONTAINER_NAME | awk '{print $1}')
-    hostIpAddr=$(docker exec -it $masterContainerId /bin/sh -c "sudo ip route" | awk '/default/ { print $3 }')
-
-    printMsg "The IP address of the host inside docker $hostIpAddr"
+    docker exec -it $masterContainerId /bin/sh -c "sudo ip route" | awk '/default/ { print $3 }'
   else
-    printMsg "The IP address of the host inside docker $(docker_ip)"
+    docker_ip
   fi
+}
+
+function default_mesos_lib {
+  if [[ "$(uname)" == "Darwin"  ]]; then
+    echo "/usr/local/lib/libmesos.dylib"
+  else
+    echo "/usr/local/lib/libmesos.so"
+  fi
+}
+
+function generate_application_conf_file {
+  hdfs_url="hdfs://$(docker_ip):8020"
+  host_ip="$(get_host_ip)"
+  spark_tgz_file="/var/spark/$SPARK_FILE"
+  mesos_native_lib="$(default_mesos_lib)"
+
+  file_location="$SCRIPTPATH/../../test-runner" 
+  #\ here is important to bypass alias (if any)
+  \cp "$SCRIPTPATH/mit-application.conf.template" "$file_location/mit-application.conf"
+  sed -i -- "s@replace_with_mesos_lib@$mesos_native_lib@g" "$file_location/mit-application.conf"
+  sed -i -- "s@replace_with_hdfs_uri@$hdfs_url@g" "$file_location/mit-application.conf"
+  sed -i -- "s@replace_with_docker_host_ip@$host_ip@g" "$file_location/mit-application.conf"
+  sed -i -- "s@replace_with_executor_tgz_location@$spark_tgz_file@g" "$file_location/mit-application.conf"
+  
+  printMsg "---------------------------"
+  printMsg "Generated application.conf file can be found here: $file_location/mit-application.conf"
+  printMsg "---------------------------"
+  
 }
 
 #start master
@@ -451,7 +481,7 @@ if [[ -n $INSTALL_HDFS ]]; then
   printMsg "Hdfs usrl http://$(docker_ip):8020"
 fi
 
-print_host_ip
+generate_application_conf_file
 
 create_html
 
