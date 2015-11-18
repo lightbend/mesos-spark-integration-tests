@@ -37,15 +37,14 @@ MEM_TH=$RESOURCE_THRESHOLD
 CPU_TH=$RESOURCE_THRESHOLD
 SHARED_FOLDER="$HOME/temp"
 
+# Make sure we know the name of the docker machine. Fail fast if we don't
+if [[ ("$(uname)" == "Darwin") && (-z $DOCKER_MACHINE_NAME) ]]; then
+  echo "Undefined DOCKER_MACHINE_NAME. This variable is usually set for you when running 'docker env <machinename>'."
+  exit 1
+fi
+
+
 ################################ FUNCTIONS #####################################
-function clean_up_container {
-  echo "Stopping container:$1"
-  docker stop $1
-  echo "Stopping container:$1..."
-  docker rm $1
-
-}
-
 function docker_ip {
   if [[ "$(uname)" == "Darwin" ]]; then
     docker-machine ip default
@@ -94,6 +93,26 @@ function generate_application_conf_file {
   printMsg "Generated application.conf file can be found here: $file_location/mit-application.conf"
   printMsg "---------------------------"
   
+function check_if_service_is_running {
+
+  COUNTER=0
+  while ! nc -z $dip $2; do
+    echo -ne "waiting for $1 at port $2...$COUNTER\r"
+    sleep 1
+    let COUNTER=COUNTER+1
+  done
+}
+
+function check_if_container_is_up {
+
+  printMsg "Checking if container $1 is up..."
+  #wait to avoid temporary running window...
+  sleep 1
+  if [[ "$(docker inspect -f {{.State.Running}} $1)" = "false" ]]; then
+    echo >&2 "$1 container failed to start...  Aborting."; exit 1;
+  else
+    printMsg "Container $1 is up..."
+  fi
 }
 
 #start master
@@ -102,7 +121,7 @@ function start_master {
   dip=$(docker_ip)
   start_master_command="/usr/sbin/mesos-master --ip=$dip $MESOS_MASTER_CONFIG"
   if [[ -n $INSTALL_HDFS ]]; then
-    HADOOP_VOLUME="-v $HADOOP_BINARY_PATH:/var/hadoop/$HADOOP_FILE"
+    HADOOP_VOLUME="-v $HADOOP_BINARY_PATH:/var/tmp/$HADOOP_FILE"
   else
     HADOOP_VOLUME=
   fi
@@ -116,6 +135,8 @@ function start_master {
   -e "MESOS_WORK_DIR=/tmp/mesos" \
   -e "MESOS_CONTAINERIZERS=docker,mesos" \
   -e "DOCKER_IP=$dip" \
+  -e "IT_DFS_DATANODE_ADDRESS_PORT=50010" \
+  -e "USER=root" \
   --privileged=true \
   --pid=host \
   --expose=5050 \
@@ -125,6 +146,10 @@ function start_master {
   -v "$SCRIPTPATH/hadoop":/var/hadoop \
   -v "$SPARK_BINARY_PATH":/var/spark/$SPARK_FILE  $HADOOP_VOLUME \
   $DOCKER_USER/$MASTER_IMAGE $start_master_command
+
+  check_if_container_is_up $MASTER_CONTAINER_NAME
+
+  check_if_service_is_running mesos-master 5050
 
   if [[ -n $INSTALL_HDFS ]]; then
     docker exec -it $MASTER_CONTAINER_NAME /bin/bash /var/hadoop/hadoop_setup.sh
@@ -140,7 +165,7 @@ function get_binaries {
   if [[ -z "${SPARK_BINARY_PATH}" ]]; then
     SPARK_BINARY_PATH=$SCRIPTPATH/binaries/$SPARK_FILE
     if [ ! -f "$SPARK_BINARY_PATH" ]; then
-      wget -P $SCRIPTPATH/binaries/ http://d3kbcqa49mib13.cloudfront.net/$SPARK_FILE
+      wget -P $SCRIPTPATH/binaries/ "http://mirror.switch.ch/mirror/apache/dist/spark/spark-$SPARK_VERSION/$SPARK_FILE"
     fi
   fi
 
@@ -171,7 +196,7 @@ function get_mem {
 
   #in Mbs
   if [[ "$(uname)" == "Darwin"  ]]; then
-    m=$(( $(vm_stat | awk '/free/ {gsub(/\./, "", $3); print $3}') * 4096 / 1048576))
+    m=`docker-machine inspect $DOCKER_MACHINE_NAME | awk  '/Memory/ {print substr($2, 0, length($2) - 1); exit}'`
     echo "$m"
   else
     m=$(grep MemTotal /proc/meminfo | awk '{print $2}')
@@ -184,10 +209,8 @@ function get_mem {
 
 function start_slaves {
 
-echo $MESOS_SLAVE_CONFIG
-
   dip=$(docker_ip)
-  start_slave_command="/usr/sbin/mesos-slave --master=$dip:5050 $MESOS_SLAVE_CONFIG"
+  start_slave_command="/usr/sbin/mesos-slave --master=$dip:5050 --ip=$dip $MESOS_SLAVE_CONFIG"
   number_of_ports=3
   for i in `seq 1 $NUMBER_OF_SLAVES`;
   do
@@ -195,8 +218,10 @@ echo $MESOS_SLAVE_CONFIG
     cpus=$(calcf $(($(get_cpus)/$NUMBER_OF_SLAVES))*$CPU_TH)
     mem=$(calcf $(($(get_mem)/$NUMBER_OF_SLAVES))*$MEM_TH)
 
+    echo "Using $cpus cpus and ${mem}M memory for slaves."
+
     if [[ -n $INSTALL_HDFS ]]; then
-      HADOOP_VOLUME="-v $HADOOP_BINARY_PATH:/var/hadoop/$HADOOP_FILE"
+      HADOOP_VOLUME="-v $HADOOP_BINARY_PATH:/var/tmp/$HADOOP_FILE"
     else
       HADOOP_VOLUME=
     fi
@@ -213,6 +238,7 @@ echo $MESOS_SLAVE_CONFIG
     -e "IT_DFS_DATANODE_HTTP_ADDRESS_PORT=$((50100 + $(($i -1))*$number_of_ports + 2))" \
     -e "IT_DFS_DATANODE_IPC_ADDRESS_PORT=$((50100 + $(($i -1))*$number_of_ports + 3))" \
     -e "DOCKER_IP=$dip" \
+    -e "USER=root" \
     -d \
     --privileged=true \
     --pid=host \
@@ -227,6 +253,9 @@ echo $MESOS_SLAVE_CONFIG
     -v /usr/lib/x86_64-linux-gnu/libapparmor.so.1:/usr/lib/x86_64-linux-gnu/libapparmor.so.1:ro \
     $DOCKER_USER/$SLAVE_IMAGE $start_slave_command
 
+    check_if_container_is_up "$SLAVE_CONTAINER_NAME"_"$i"
+    check_if_service_is_running mesos-slave $((5050 + $i))
+
     if [[ -n $INSTALL_HDFS ]]; then
       docker exec -it "$SLAVE_CONTAINER_NAME"_"$i" /bin/bash /var/hadoop/hadoop_setup.sh SLAVE
       docker exec -it "$SLAVE_CONTAINER_NAME"_"$i" /usr/local/sbin/hadoop-daemon.sh --script hdfs start datanode
@@ -239,9 +268,9 @@ echo $MESOS_SLAVE_CONFIG
 function replace_in_htmlfile_multi {
   if [[ "$(uname)" == "Darwin" ]]; then
     l_var="$1"
-  awk -v r="${l_var//$'\n'/\\n}" "{sub(/$2/,r)}1" $3 >  tmp_file && mv tmp_file $4
+  awk -v r="${l_var//$'\n'/\\n}" "{sub(/$2/,r)}1" $3 >  $SCRIPTPATH/tmp_file && mv $SCRIPTPATH/tmp_file $4
   else
-    awk -v r="$1" "{gsub(/$2/,r)}1" $3 >  tmp_file && mv tmp_file $4
+    awk -v r="$1" "{gsub(/$2/,r)}1" $3 >  $SCRIPTPATH/tmp_file && mv $SCRIPTPATH/tmp_file $4
   fi
 }
 
@@ -265,7 +294,7 @@ $HTML_SNIPPET
 <div class="alert alert-success" role="alert">Your cluster is up and running!</div>
 EOF
 
-replace_in_htmlfile_multi "$node_info" "REPLACE_NODES" "template.html" "index.html"
+replace_in_htmlfile_multi "$node_info" "REPLACE_NODES" "$SCRIPTPATH/template.html" "$SCRIPTPATH/index.html"
 
 HDFS_SNIPPET_1=
 HDFS_SNIPPET_OUT=
@@ -290,7 +319,21 @@ $HDFS_SNIPPET_OUT
 <div style="margin-top:10px;" class="alert alert-success" role="alert">Your cluster is up and running!</div>
 EOF
 
-replace_in_htmlfile_multi "$dash_info" "REPLACE_DASHBOARDS" "index.html" "index.html"
+replace_in_htmlfile_multi "$dash_info" "REPLACE_DASHBOARDS" "$SCRIPTPATH/index.html" "$SCRIPTPATH/index.html"
+
+}
+
+function remove_container_by_name_prefix {
+
+  if [[ "$(uname)" == "Darwin" ]]; then
+    input="$(docker ps -a | grep $1 | awk '{print $1}')"
+
+    if [[ -n "$input"  ]]; then
+      echo "$input" | xargs docker rm -f
+    fi
+  else
+    docker ps -a | grep $1 | awk '{print $1}' | xargs -r docker rm -f
+  fi
 
 }
 
@@ -457,10 +500,10 @@ mkdir -p $SCRIPTPATH/binaries
 #clean up containers
 
 printMsg "Stopping and removing master container(s)..."
-docker ps -a | grep $MASTER_CONTAINER_NAME | awk '{print $1}' | xargs docker rm -f
+remove_container_by_name_prefix $MASTER_CONTAINER_NAME
 
 printMsg "Stopping and removing slave container(s)..."
-docker ps -a | grep $SLAVE_CONTAINER_NAME | awk '{print $1}' | xargs docker rm -f
+remove_container_by_name_prefix $SLAVE_CONTAINER_NAME
 
 printMsg "Getting binaries..."
 get_binaries
@@ -478,7 +521,7 @@ printMsg "Mesos cluster dashboard url http://$(docker_ip):5050"
 if [[ -n $INSTALL_HDFS ]]; then
   printMsg "Hdfs cluster started!"
   printMsg "Hdfs cluster dashboard url http://$(docker_ip):50070"
-  printMsg "Hdfs usrl http://$(docker_ip):8020"
+  printMsg "Hdfs url hdfs://$(docker_ip):8020"
 fi
 
 generate_application_conf_file

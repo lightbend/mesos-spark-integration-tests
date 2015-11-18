@@ -21,8 +21,8 @@ EOF
 mkdir -p /root/data/datanode
 mkdir -p /root/data/namenode
 
-tar -zxf /var/hadoop/hadoop-2.6.0.tar.gz -C /var/hadoop/
-cp -r /var/hadoop/hadoop-2.6.0/* /usr/local/
+tar -zxf /var/tmp/hadoop-2.6.0.tar.gz -C /var/tmp/
+cp -r /var/tmp/hadoop-2.6.0/* /usr/local/
 #echo "0.0.0.0" > /usr/local/etc/hadoop/slaves
 
 files=( "core-site.xml" "hdfs-site.xml" )
@@ -45,21 +45,21 @@ if [ "$1" = "SLAVE" ]; then
 
   <property>
   <name>dfs.datanode.address</name>
-  <value>$DOCKER_IP:$IT_DFS_DATANODE_ADDRESS_PORT</value>
+  <value>0.0.0.0:$IT_DFS_DATANODE_ADDRESS_PORT</value>
   </property>
 
   <property>
   <name>dfs.datanode.http.address</name>
-  <value>$DOCKER_IP:$IT_DFS_DATANODE_HTTP_ADDRESS_PORT</value>
+  <value>0.0.0.0:$IT_DFS_DATANODE_HTTP_ADDRESS_PORT</value>
   </property>
 
   <property>
   <name>dfs.datanode.ipc.address</name>
-  <value>$DOCKER_IP:$IT_DFS_DATANODE_IPC_ADDRESS_PORT</value>
+  <value>0.0.0.0:$IT_DFS_DATANODE_IPC_ADDRESS_PORT</value>
   </property>
 EOF
 else
-  rep_text=""
+rep_text=""
 fi
 
 awk -v r="$rep_text" '{gsub(/REPLACE/,r)}1' /usr/local/etc/hadoop/hdfs-site.xml >  tmp_file && mv tmp_file /usr/local/etc/hadoop/hdfs-site.xml
