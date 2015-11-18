@@ -37,6 +37,13 @@ MEM_TH=$RESOURCE_THRESHOLD
 CPU_TH=$RESOURCE_THRESHOLD
 SHARED_FOLDER="$HOME/temp"
 
+# Make sure we know the name of the docker machine. Fail fast if we don't
+if [[ ("$(uname)" == "Darwin") && (-z $DOCKER_MACHINE_NAME) ]]; then
+  echo "Undefined DOCKER_MACHINE_NAME. This variable is usually set for you when running 'docker env <machinename>'."
+  exit 1
+fi
+
+
 ################################ FUNCTIONS #####################################
 function docker_ip {
   if [[ "$(uname)" == "Darwin" ]]; then
@@ -161,7 +168,7 @@ function get_mem {
 
   #in Mbs
   if [[ "$(uname)" == "Darwin"  ]]; then
-    m=$(( $(vm_stat | awk '/free/ {gsub(/\./, "", $3); print $3}') * 4096 / 1048576))
+    m=`docker-machine inspect $DOCKER_MACHINE_NAME | awk  '/Memory/ {print substr($2, 0, length($2) - 1); exit}'`
     echo "$m"
   else
     m=$(grep MemTotal /proc/meminfo | awk '{print $2}')
@@ -182,6 +189,8 @@ function start_slaves {
     echo "starting slave ...$i"
     cpus=$(calcf $(($(get_cpus)/$NUMBER_OF_SLAVES))*$CPU_TH)
     mem=$(calcf $(($(get_mem)/$NUMBER_OF_SLAVES))*$MEM_TH)
+
+    echo "Using $cpus cpus and ${mem}M memory for slaves."
 
     if [[ -n $INSTALL_HDFS ]]; then
       HADOOP_VOLUME="-v $HADOOP_BINARY_PATH:/var/tmp/$HADOOP_FILE"
