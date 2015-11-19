@@ -9,8 +9,10 @@ import com.typesafe.spark.test.mesos.mesosstate.MesosCluster
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs._
 
+import scala.collection.mutable.ArrayBuffer
 import scala.io.BufferedSource
 import scala.sys.process.Process
+import sys.process._
 
 object Utils {
 
@@ -29,6 +31,7 @@ object Utils {
       pool.shutdown()
     }
   }
+
 
   def startServerForResults(server: ServerSocket, pool: ExecutorService) = {
 
@@ -49,7 +52,6 @@ object Utils {
     })
   }
 
-
   def killAnyRunningFrameworks(mesosConsoleUrl: String) = {
     val cluster = MesosCluster.loadStates(mesosConsoleUrl)
     //TODO: using curl, is it available in all platform
@@ -66,11 +68,28 @@ object Utils {
 
   def submitSparkJob(jobDesc: String, jobArgs: String*)(implicit config: Config) = {
     val cmd: Seq[String] = Seq(jobDesc) ++ jobArgs
-    val proc = Process(cmd.mkString(" "), None,
-      "MESOS_NATIVE_JAVA_LIBRARY" -> mesosNativeLibraryLocation(),
-      "SPARK_EXECUTOR_URI" -> config.getString("spark.executor.uri")
+
+    val env =  ArrayBuffer(
+      "MESOS_NATIVE_JAVA_LIBRARY" -> mesosNativeLibraryLocation()
     )
+
+    if (config.hasPath("spark.executor.uri")) {
+      env += ("SPARK_EXECUTOR_URI" -> config.getString("spark.executor.uri"))
+    }
+
+    if (config.hasPath("spark_env.spark_local_ip")) {
+      env += ("SPARK_LOCAL_IP" -> config.getString("spark_env.spark_local_ip"))
+    }
+
+    if (config.hasPath("submit_env.libprocess_ip")) {
+      env += ("LIBPROCESS_IP" -> config.getString("submit_env.libprocess_ip"))
+    }
+
+    val cmdStr = cmd.mkString(" ")
+    printMsg(s"Running command: ${cmdStr} with env vars: ${env.mkString(" ")}")
+    val proc = Process(cmdStr, None, env: _*)
     proc.lines_!.foreach(line => println(line))
+    printMsg(s"Command completed.")
   }
 
   def printMsg(m: String): Unit = {
@@ -78,7 +97,6 @@ object Utils {
     println(m)
     println("")
   }
-
 
   def startMesosDispatcher(sparkHome: String, sparkExecutorPath: String, mesosMasterUrl: String)(implicit config: Config): String = {
     //stop any running mesos dispatcher first
@@ -93,10 +111,14 @@ object Utils {
       s"--host ${InetAddress.getLocalHost().getHostName()}",
       s"--port ${dispatcherPort}"
     )
-    val proc = Process(mesosStartDispatcherDesc.mkString(" "), None,
+    val env = Seq(
       "MESOS_NATIVE_JAVA_LIBRARY" -> mesosNativeLibraryLocation(),
       "SPARK_EXECUTOR_URI" -> sparkExecutorPath
     )
+
+    val cmdStr = mesosStartDispatcherDesc.mkString(" ")
+    printMsg(s"Running command: ${cmdStr} with env vars: ${env.mkString(" ")}")
+    val proc = Process(cmdStr, None, env: _*)
     proc.lines_!.foreach(line => println(line))
 
     s"mesos://${InetAddress.getLocalHost().getHostName()}:${dispatcherPort}"

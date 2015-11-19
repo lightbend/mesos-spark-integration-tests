@@ -8,9 +8,8 @@ object MesosIntegrationTestRunner {
 
   def main(args: Array[String]): Unit = {
 
-    implicit val config = ConfigFactory.load().getConfig("mit")
+    implicit val config = ConfigFactory.load()
     printMsg(config.toString)
-
 
     val result = ClientModeRunner.run(args) ++ ClusterModeRunner.run(args)
 

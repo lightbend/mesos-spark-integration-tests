@@ -32,3 +32,4 @@ shared-loc/**
 mesos-docker/run/hadoop/
 mesos-docker/tmp_file
 bin/
+test-runner/src/main/resources/application.conf
