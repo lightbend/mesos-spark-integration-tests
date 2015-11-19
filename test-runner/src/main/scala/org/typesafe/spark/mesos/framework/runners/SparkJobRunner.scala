@@ -1,15 +1,6 @@
 package org.typesafe.spark.mesos.framework.runners
 
-import java.io.{FileWriter, PrintWriter}
-import java.net.InetAddress
-
-import org.scalatest.events.Event
-import org.scalatest.{Reporter, Args}
-import org.typesafe.spark.mesos.framework.reporter.SocketReporter
-
-import scala.collection.mutable.{Set => MSet}
-
-import org.apache.spark._
+import java.net.{InetAddress, Socket}
 import org.typesafe.spark.mesos.tests.{ClientModeSpec, ClusterModeSpec}
 
 object SparkJobRunner {
@@ -25,8 +16,14 @@ object SparkJobRunner {
       case "client" => new ClientModeSpec(mesosConsoleUrl)
     }
 
-    val reporter = new SocketReporter(runnerAddress, runnerPort)
-    testToRun.run(None, Args(reporter))
+    val socket = new Socket(runnerAddress, runnerPort)
+    try {
+      Console.withOut(socket.getOutputStream) {
+        org.scalatest.run(testToRun)
+      }
+    } finally {
+      socket.close()
+    }
   }
 
 
