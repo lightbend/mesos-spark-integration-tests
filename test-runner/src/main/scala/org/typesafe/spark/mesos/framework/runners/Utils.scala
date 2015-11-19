@@ -86,7 +86,6 @@ object Utils {
     val result = stopMesosDispatcher(sparkHome)
     printMsg(s"Stopped mesos dispatcher $result")
 
-    //TODO: make the port configurable
     val dispatcherPort = config.getInt("mesos.dispatcher.port")
 
     val mesosStartDispatcherDesc = Seq(s"${sparkHome}/sbin/start-mesos-dispatcher.sh",
