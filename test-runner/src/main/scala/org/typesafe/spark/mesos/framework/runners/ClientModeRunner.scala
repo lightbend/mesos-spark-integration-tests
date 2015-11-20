@@ -32,9 +32,11 @@ object ClientModeRunner {
         mesosConsoleUrl,
         "client",
         "localhost",
-        config.getString("test.runner.port"))
+        config.getString("test.runner.port"),
+        config.getString("spark.role"),
+        config.getString("spark.attributes"),
+        config.getString("spark.roleCpus"))
     }
   }
-
 
 }
