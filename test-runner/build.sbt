@@ -5,19 +5,40 @@ name := "mesos-spark-integration-tests"
 version := "0.1.0"
 scalaVersion := "2.10.5"
 
+//default Spark version
 val sparkVersion = "1.5.1"
 
-libraryDependencies ++= Seq(
- "org.apache.spark"  %% "spark-core"      % sparkVersion  % "provided" withSources(),
- "org.apache.spark"  %% "spark-core"      % sparkVersion  % "provided" withSources(),
- "org.apache.spark"  %% "spark-streaming" % sparkVersion  % "provided" withSources(),
- "org.apache.spark"  %% "spark-sql"       % sparkVersion  % "provided" withSources(),
+val sparkHome = SettingKey[Option[String]]("spark-home", "the value of the variable 'spark.home'")
+
+def assemblyJarPath(sparkHome: String): String = {
+  val sparkHomeFile = file(sparkHome)
+  val assemblyJarFilter = (sparkHomeFile / "lib") * "spark-assembly-*.jar"
+  val jarPath = assemblyJarFilter.getPaths.headOption.getOrElse(sys.error(s"No spark assembly jar found under ${sparkHome}/lib"))
+  s"file:///${jarPath}"
+}
+
+def addSparkDependencies(sparkHome: Option[String]) = if (sparkHome.isDefined) {
+    Seq(
+      "org.apache.spark" % "spark-assembly" % "spark-home-version" % "provided" from(assemblyJarPath(sparkHome.get)))
+  } else {
+   Seq(
+    "org.apache.spark" %% "spark-core" % sparkVersion % "provided" withSources(),
+    "org.apache.spark" %% "spark-core" % sparkVersion % "provided" withSources(),
+    "org.apache.spark" %% "spark-streaming" % sparkVersion % "provided" withSources(),
+    "org.apache.spark" %% "spark-sql" % sparkVersion % "provided" withSources())
+  }
+
+
+sparkHome := sys.props.get("spark.home")
+
+libraryDependencies ++= addSparkDependencies(sparkHome.value) ++ Seq(
  "org.apache.hadoop" % "hadoop-client"    % "2.6.1" excludeAll(
    ExclusionRule(organization = "commons-beanutils"),
    ExclusionRule(organization = "org.apache.hadoop", name ="hadoop-yarn-api")),
  "org.scalatest"     %% "scalatest"       % "2.2.4",
  "com.typesafe"      %  "config"          % "1.2.1"
 )
+
 
 val mit = inputKey[Unit]("Runs spark/mesos integration tests.")
 

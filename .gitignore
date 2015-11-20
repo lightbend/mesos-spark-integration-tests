@@ -29,3 +29,5 @@ tmp/**
 .sass-cache
 metastore_db
 shared-loc/**
+mesos-docker/run/hadoop/
+mesos-docker/tmp_file
