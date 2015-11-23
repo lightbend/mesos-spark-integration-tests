@@ -32,6 +32,7 @@ MESOS_MASTER_CONFIG=
 MESOS_SLAVE_CONFIG=
 HADOOP_FILE=hadoop-$HADOOP_VERSION_FOR_SPARK.0.tar.gz
 RESOURCE_THRESHOLD=1.0
+SLAVES_CONFIG_FILE=
 
 MEM_TH=$RESOURCE_THRESHOLD
 CPU_TH=$RESOURCE_THRESHOLD
@@ -80,15 +81,15 @@ function generate_application_conf_file {
   spark_tgz_file="/var/spark/$SPARK_FILE"
   mesos_native_lib="$(default_mesos_lib)"
 
-  source_location="$SCRIPTPATH/../../test-runner/src/main/resources" 
-  target_location="$SCRIPTPATH/../../test-runner" 
+  source_location="$SCRIPTPATH/../../test-runner/src/main/resources"
+  target_location="$SCRIPTPATH/../../test-runner"
 
   \cp "$source_location/application.conf" "$target_location/mit-application.conf"
   sed -i -- "s@replace_with_mesos_lib@$mesos_native_lib@g" "$target_location/mit-application.conf"
   sed -i -- "s@replace_with_hdfs_uri@$hdfs_url@g" "$target_location/mit-application.conf"
   sed -i -- "s@replace_with_docker_host_ip@$host_ip@g" "$target_location/mit-application.conf"
   sed -i -- "s@replace_with_spark_executor_ui@$spark_tgz_file@g" "$target_location/mit-application.conf"
-  
+
   #remove any temp file generated
   rm "$target_location/mit-application.conf--"
 
@@ -96,7 +97,7 @@ function generate_application_conf_file {
   printMsg "Generated application.conf file can be found here: $target_location/mit-application.conf"
   printMsg "---------------------------"
 }
-  
+
 function check_if_service_is_running {
 
   COUNTER=0
@@ -208,16 +209,23 @@ function get_mem {
   fi
 }
 
+
+function remove_quotes {
+  echo "$1" | tr -d '"'
+}
+
 #libapparmor is needed
 #https://github.com/RayRutjes/simple-gitlab-runner/pull/1
 
 function start_slaves {
 
   dip=$(docker_ip)
-  start_slave_command="/usr/sbin/mesos-slave --master=$dip:5050 --ip=$dip $MESOS_SLAVE_CONFIG"
+
   number_of_ports=3
   for i in `seq 1 $NUMBER_OF_SLAVES`;
   do
+    start_slave_command="/usr/sbin/mesos-slave --master=$dip:5050 --ip=$dip $MESOS_SLAVE_CONFIG"
+
     echo "starting slave ...$i"
     cpus=$(calcf $(($(get_cpus)/$NUMBER_OF_SLAVES))*$CPU_TH)
     mem=$(calcf $(($(get_mem)/$NUMBER_OF_SLAVES))*$MEM_TH)
@@ -229,6 +237,25 @@ function start_slaves {
     else
       HADOOP_VOLUME=
     fi
+
+    if [[ -n $SLAVES_CONFIG_FILE ]]; then
+      resources_cfg=$(get_field_value_from_slave_cfg_at_index resources $SLAVES_CONFIG_FILE $(($i-1)))
+      attributes_cfg=$(get_field_value_from_slave_cfg_at_index attributes $SLAVES_CONFIG_FILE $(($i-1)))
+    fi
+
+    if [[ -n $resources_cfg ]]; then
+      resources_cfg=$(remove_quotes "--resources=$resources_cfg")
+    else
+      resources_cfg=""
+    fi
+
+    if [[ -n $attributes_cfg ]]; then
+      attributes_cfg=$(remove_quotes "--attributes=$attributes_cfg")
+    else
+      attributes_cfg=""
+    fi
+
+    start_slave_command="$start_slave_command  $resources_cfg $attributes_cfg"
 
     docker run \
     -e "MESOS_PORT=$((5050 + $i))" \
@@ -361,6 +388,7 @@ function show_help {
   --cpu-th the percentage of the host memory to use for slaves. Default: 0.5.
   --mesos-master-config parameters passed to the mesos master (specific only and common with slave).
   --mesos-slave-config parameters passed to the mesos slave(specific only an docmmon with the master).
+  --slaves-cfg-file provide a slave configuration file to pass specific attributes per slave
 EOF
 }
 
@@ -455,6 +483,15 @@ function parse_args {
         exitWithMsg '"--mesos-slave-config" requires a non-empty option argument.\n'
       fi
       ;;
+      --slaves-cfg-file)       # Takes an option argument, ensuring it has been specified.
+      if [ -n "$2" ]; then
+        SLAVES_CONFIG_FILE=$2
+        shift 2
+        continue
+      else
+        exitWithMsg '"--slaves-cfg-file" requires a non-empty option argument.\n'
+      fi
+      ;;
       --)              # End of all options.
       shift
       break
@@ -473,6 +510,17 @@ function parse_args {
   if [[ -n $HADOOP_BINARY_PATH && -z $INSTALL_HDFS ]]; then
     exitWithMsg "Don't specify no-hdfs flag, --hadoop-binary-path is only used when hdfs is used which is default"
   fi
+
+  if [[ -n $SLAVES_CONFIG_FILE ]]; then
+    if [[ -f $SLAVES_CONFIG_FILE ]]; then
+      . cfg.sh
+      #update the number of slaves to start here
+      NUMBER_OF_SLAVES=$(get_number_of_slaves $SLAVES_CONFIG_FILE)
+    else
+      exitWithMsg "File $SLAVES_CONFIG_FILE does not exist..."
+    fi
+  fi
+
 }
 
 function exitWithMsg {

@@ -1,0 +1,11 @@
+{
+
+"configs" : [
+
+{ "name" : "slave_1", "resources" : "disk(spark_role):2000;cpus(spark_role):2.0;mem(spark_role):1500;cpus(*):2.0;mem(*):2500;disk(*):2000", "attributes" : "spark:only" },
+
+{ "name" : "slave_2", "resources" : "disk(spark_role):2000;cpus(spark_role):2.0;mem(spark_role):1500;cpus(*):2.0;mem(*):2500;disk(*):2000", "attributes" : "app:only" }
+
+]
+
+}
