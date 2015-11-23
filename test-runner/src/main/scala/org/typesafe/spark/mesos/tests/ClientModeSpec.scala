@@ -53,7 +53,7 @@ class ClientModeSpec(mesosConsoleUrl: String, cfg: RoleConfigInfo)
 
     val m = MesosCluster.loadStates(mesosConsoleUrl)
     assert(m.sparkFramework.isDefined, "only one framework should be running")
-    assert(1 == m.sparkFramework.get.tasks.size, "no task should be running")
+    assert(1 * m.numberOfSlaves == m.sparkFramework.get.tasks.size, "One task per slave should be running, since its coarse grain mode")
   }
 
   runSparkTest("simple count in fine grained mode with role", "spark.mesos.coarse" -> "true",
