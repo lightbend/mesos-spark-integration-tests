@@ -14,7 +14,6 @@ import scala.sys.process.Process
 
 object Utils {
 
-
   def runSparkJobAndCollectResult(job: => Unit)(implicit config: Config): List[String] = {
     val pool = Executors.newSingleThreadExecutor()
     val server = new ServerSocket(config.getInt("test.runner.port"))
@@ -68,8 +67,8 @@ object Utils {
   def submitSparkJob(jobDesc: String, jobArgs: String*)(implicit config: Config) = {
     val cmd: Seq[String] = Seq(jobDesc) ++ jobArgs
     val proc = Process(cmd.mkString(" "), None,
-      "MESOS_NATIVE_JAVA_LIBRARY" -> config.getString("mesos.native.library.location"),
-      "SPARK_EXECUTOR_URI" -> config.getString("spark.executor.tgz.location")
+      "MESOS_NATIVE_JAVA_LIBRARY" -> mesosNativeLibraryLocation(),
+      "SPARK_EXECUTOR_URI" -> config.getString("spark.executor.uri")
     )
     proc.lines_!.foreach(line => println(line))
   }
@@ -95,12 +94,19 @@ object Utils {
       s"--port ${dispatcherPort}"
     )
     val proc = Process(mesosStartDispatcherDesc.mkString(" "), None,
-      "MESOS_NATIVE_JAVA_LIBRARY" -> config.getString("mesos.native.library.location"),
+      "MESOS_NATIVE_JAVA_LIBRARY" -> mesosNativeLibraryLocation(),
       "SPARK_EXECUTOR_URI" -> sparkExecutorPath
     )
     proc.lines_!.foreach(line => println(line))
 
     s"mesos://${InetAddress.getLocalHost().getHostName()}:${dispatcherPort}"
+  }
+
+  //looks up the env variable MESOS_NATIVE_JAVA_LIBRARY first and falls back to
+  //"mesos.native.library.location" config property.
+  def mesosNativeLibraryLocation()(implicit config: Config): String = {
+    scala.sys.env.getOrElse("MESOS_NATIVE_JAVA_LIBRARY",
+      config.getString("mesos.native.library.location"))
   }
 
   def copyApplicationJar(jar: String, uri: String) = {

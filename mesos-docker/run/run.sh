@@ -80,19 +80,20 @@ function generate_application_conf_file {
   spark_tgz_file="/var/spark/$SPARK_FILE"
   mesos_native_lib="$(default_mesos_lib)"
 
-  file_location="$SCRIPTPATH/../../test-runner" 
+  source_location="$SCRIPTPATH/../../test-runner/src/main/resources" 
+  target_location="$SCRIPTPATH/../../test-runner" 
 
-  \cp "$SCRIPTPATH/mit-application.conf.template" "$file_location/mit-application.conf"
-  sed -i -- "s@replace_with_mesos_lib@$mesos_native_lib@g" "$file_location/mit-application.conf"
-  sed -i -- "s@replace_with_hdfs_uri@$hdfs_url@g" "$file_location/mit-application.conf"
-  sed -i -- "s@replace_with_docker_host_ip@$host_ip@g" "$file_location/mit-application.conf"
-  sed -i -- "s@replace_with_executor_tgz_location@$spark_tgz_file@g" "$file_location/mit-application.conf"
+  \cp "$source_location/application.conf" "$target_location/mit-application.conf"
+  sed -i -- "s@replace_with_mesos_lib@$mesos_native_lib@g" "$target_location/mit-application.conf"
+  sed -i -- "s@replace_with_hdfs_uri@$hdfs_url@g" "$target_location/mit-application.conf"
+  sed -i -- "s@replace_with_docker_host_ip@$host_ip@g" "$target_location/mit-application.conf"
+  sed -i -- "s@replace_with_spark_executor_ui@$spark_tgz_file@g" "$target_location/mit-application.conf"
   
   #remove any temp file generated
-  rm "$file_location/mit-application.conf--"
+  rm "$target_location/mit-application.conf--"
 
   printMsg "---------------------------"
-  printMsg "Generated application.conf file can be found here: $file_location/mit-application.conf"
+  printMsg "Generated application.conf file can be found here: $target_location/mit-application.conf"
   printMsg "---------------------------"
 }
   

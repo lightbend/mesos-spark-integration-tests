@@ -1,25 +1,80 @@
-# Guide Spark Mesos integration tests
+# Spark on Mesos Integration Tests Project
 
-The goal of this project to provide adequate test suite to test Spark Mesos integration and verify supported
-mesos features are working properly for Spark. Ideally these tests should be run again very Spark pull request before they are merged to master.
+The purpose of this project is to provide integration tests for Apache Spark
+on Mesos. It consists of two modules:
+- mesos-docker: which creates a dockerized cluster with several big data components.
+- test-runner: the actual intergation test suite.
+
+Each project contains detail instructions how to use them separately at each Readme
+file.
+
+An example of combining these two modules to test spark on mesos (assuming a machine with 8 cpus,8GB and enough disk space) is:
+
+##Create a cluster
+
+- To start the default mesos cluster with HDFS and slave nodes you simply run
+
+	```sh
+	mesos-docker/run/run.sh
+	```
+
+- Start a cluster with all the options
+
+	```sh
+	#start a cluster with all the configurations
+	mesos-docker/run/run.sh --mesos-master-config "--roles=spark_role" --mesos-slave-config "--resources=disk(spark_role):10000;cpus(spark_role):4;mem(spark_role):3000;cpus(*):4;mem(*):3000;disk(*):10000"
+	```
+
+- If you want to start a mesos cluster without HDFS
+
+	```sh
+	mesos-docker/run/run.sh --no-hdfs
+	```
 
 
-##Running tests using Docker
+Check the output generated (index.html or console output) for config info to use next eg. mesos master url.
 
-* Start the docker mesos cluster with HDFS
+Configure you application.conf file under test-runner/src/main/resources accordingly
+(an example for Ubuntu):
+
 ```sh
-cd mesos-docker
-./run/run.sh --with-hdfs
+#Provide full path to the mesos native library. For ubuntu its filename is libmesos.so, for mac its libmesos.dylib
+mit.mesos.native.library.location = "/usr/lib/libmesos.so"
+
+#Used to copy the application jar file for cluster mode tests
+mit.hdfs.uri = "hdfs://172.17.42.1:8020"
+
+# a spark role to test
+mit.spark.role = "spark_role"
+
+#some constraint to use
+mit.spark.attributes = "spark:only"
+
+#number of cpus to use for spark.core.max in tests using a role. Should be at most the reserved cpus for the role.
+mit.spark.roleCpus = "2"
+
+#The IP address of the host as seen from docker instance. This ip address is used to connect to runner
+#from docker instance.
+mit.docker.host.ip = "172.17.42.1"
+
+#path of mesos slaves to find spark executor. This should be set when you create docker based mesos cluster
+mit.spark.executor.tgz.location = "/var/spark/spark-1.5.1-bin-hadoop2.6.tgz"
+
+mit.mesos.dispatcher.port = 7088
+
+mit.test.timeout = 5 minutes
+
+mit.test.runner.port = 8888
 ```
 
-Note: At the end this will generate an **mit-application.conf** file that we can use to 
-run the tests.
+##Run test suite
 
-* Invoke the following sbt task by specifying the SPARK_HOME folder and mesos master url
 
 ```sh
-cd test-runner
-sbt -Dconfig.file=./mit-application.conf "mit <spark_home> mesos://<mesos-master-ip>:5050"
+#run the tests
+
+test-runner/sbt "mit /home/stavros/workspace/installs/spark-1.5.1-bin-hadoop2.6  mesos://172.17.42.1:5050"
 ```
 
-*We use spark_submit.sh from <SPARK_HOME> to submit jobs. So please make sure you have spark binary distribution download and unzip*
+Note: configuration entries in application.conf are mandatory.
+
