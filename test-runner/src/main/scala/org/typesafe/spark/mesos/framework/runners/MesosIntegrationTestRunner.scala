@@ -17,8 +17,8 @@ object MesosIntegrationTestRunner {
     printMsg("TestResults:")
     result.foreach(printMsg)
 
-    //TODO: Generate some JUnit style report for CI
-    if (result.exists(_.startsWith("TestFailed"))) {
+    if (result.exists(_.contains("FAILED"))) {
+      printMsg(Console.RED + "ERROR: One or more tests failed" + Console.RESET)
       System.exit(1)
     }
 

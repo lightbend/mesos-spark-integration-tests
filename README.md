@@ -10,12 +10,27 @@ file.
 
 An example of combining these two modules to test spark on mesos (assuming a machine with 8 cpus,8GB and enough disk space) is:
 
-Create a cluster:
+##Create a cluster
 
-```sh
-#start a cluster
-mesos-docker/run/run.sh --with-hdfs --mesos-master-config "--roles=spark_role" --mesos-slave-config "--resources=disk(spark_role):10000;cpus(spark_role):4;mem(spark_role):3000;cpus(*):4;mem(*):3000;disk(*):10000"
-```
+- To start the default mesos cluster with HDFS and slave nodes you simply run
+
+	```sh
+	mesos-docker/run/run.sh
+	```
+
+- Start a cluster with all the options
+
+	```sh
+	#start a cluster with all the configurations
+	mesos-docker/run/run.sh --mesos-master-config "--roles=spark_role" --mesos-slave-config "--resources=disk(spark_role):10000;cpus(spark_role):4;mem(spark_role):3000;cpus(*):4;mem(*):3000;disk(*):10000"
+	```
+
+- If you want to start a mesos cluster without HDFS
+
+	```sh
+	mesos-docker/run/run.sh --no-hdfs
+	```
+
 
 Check the output generated (index.html or console output) for config info to use next eg. mesos master url.
 
@@ -52,7 +67,9 @@ mit.test.timeout = 5 minutes
 mit.test.runner.port = 8888
 ```
 
-Run the suite:
+##Run test suite
+
+
 ```sh
 #run the tests
 
@@ -60,3 +77,4 @@ test-runner/sbt "mit /home/stavros/workspace/installs/spark-1.5.1-bin-hadoop2.6 
 ```
 
 Note: configuration entries in application.conf are mandatory.
+

@@ -33,7 +33,7 @@ object ClusterModeRunner {
     runSparkJobAndCollectResult {
       //start the dispatcher
       val dispatcherUrl = startMesosDispatcher(sparkHome,
-        config.getString("spark.executor.tgz.location"),
+        config.getString("spark.executor.uri"),
         mesosMasterUrl)
       printMsg(s"Mesos dispatcher running at $dispatcherUrl")
 
