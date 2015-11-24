@@ -19,6 +19,7 @@ object MesosIntegrationTestRunner {
 
     if (result.exists(_.contains("FAILED"))) {
       printMsg(Console.RED + "ERROR: One or more tests failed" + Console.RESET)
+      System.exit(1)
     }
 
   }
