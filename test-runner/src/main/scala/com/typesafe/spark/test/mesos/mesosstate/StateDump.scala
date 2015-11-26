@@ -1,11 +1,11 @@
-package mesostest.mesosstate
+package com.typesafe.spark.test.mesos.mesosstate
 
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
 import java.net.URL
 import java.io.InputStreamReader
 
-import org.typesafe.spark.mesos.tests.MesosIntTestHelper
+import com.typesafe.spark.test.mesos.MesosIntTestHelper
 
 object MesosState extends Enumeration {
   type MesosState = Value

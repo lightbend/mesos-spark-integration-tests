@@ -1,11 +1,11 @@
-package org.typesafe.spark.mesos.tests
+package com.typesafe.spark.test.mesos
 
 import java.net.InetAddress
 
-import mesostest.mesosstate.MesosCluster
+import com.typesafe.spark.test.mesos.mesosstate.MesosCluster
 import org.scalatest.FunSuite
 import org.scalatest.concurrent.TimeLimitedTests
-import org.typesafe.spark.mesos.framework.runners.{RoleConfigInfo, Utils}
+import com.typesafe.spark.test.mesos.framework.runners.{RoleConfigInfo, Utils}
 
 import scala.collection.mutable.{Set => MSet}
 

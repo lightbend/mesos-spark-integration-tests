@@ -1,4 +1,4 @@
-package org.typesafe.spark.mesos.framework.runners
+package com.typesafe.spark.test.mesos.framework.runners
 
 import java.net.{Socket, ServerSocket}
 import java.util.concurrent._
@@ -23,7 +23,7 @@ object ClientModeRunner {
 
     runSparkJobAndCollectResult {
       val sparkSubmitJobDesc = Seq(s"${sparkHome}/bin/spark-submit",
-        "--class org.typesafe.spark.mesos.framework.runners.SparkJobRunner",
+        "--class com.typesafe.spark.test.mesos.framework.runners.SparkJobRunner",
         s"--master $mesosMasterUrl",
         s"--deploy-mode client")
 

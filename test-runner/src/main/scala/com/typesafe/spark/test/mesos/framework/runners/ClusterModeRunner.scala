@@ -1,11 +1,11 @@
-package org.typesafe.spark.mesos.framework.runners
+package com.typesafe.spark.test.mesos.framework.runners
 
 import java.io.File
 import java.net.URL
 
 import Utils._
 import com.typesafe.config.Config
-import mesostest.mesosstate.MesosCluster
+import com.typesafe.spark.test.mesos.mesosstate.MesosCluster
 
 import scala.sys.process.Process
 
@@ -39,7 +39,7 @@ object ClusterModeRunner {
 
       //run spark submit in cluster mode
       val sparkSubmitJobDesc = Seq(s"${sparkHome}/bin/spark-submit",
-        "--class org.typesafe.spark.mesos.framework.runners.SparkJobRunner",
+        "--class com.typesafe.spark.test.mesos.framework.runners.SparkJobRunner",
         s"--master $dispatcherUrl",
         s"--driver-memory 512mb",
         s"--deploy-mode cluster")
