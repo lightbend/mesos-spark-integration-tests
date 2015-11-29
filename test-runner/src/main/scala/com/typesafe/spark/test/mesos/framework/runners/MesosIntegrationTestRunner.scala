@@ -1,7 +1,7 @@
-package org.typesafe.spark.mesos.framework.runners
+package com.typesafe.spark.test.mesos.framework.runners
 
 import com.typesafe.config.ConfigFactory
-import org.typesafe.spark.mesos.framework.runners.Utils._
+import com.typesafe.spark.test.mesos.framework.runners.Utils._
 
 object MesosIntegrationTestRunner {
 

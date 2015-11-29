@@ -1,4 +1,4 @@
-package org.typesafe.spark.mesos.tests
+package com.typesafe.spark.test.mesos
 
 import org.apache.spark.{SparkConf, SparkContext}
 import org.scalatest.FunSuite

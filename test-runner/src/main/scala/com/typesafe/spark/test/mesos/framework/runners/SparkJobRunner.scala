@@ -1,8 +1,8 @@
-package org.typesafe.spark.mesos.framework.runners
+package com.typesafe.spark.test.mesos.framework.runners
 
 import java.net.{InetAddress, Socket}
 
-import org.typesafe.spark.mesos.tests.{ClientModeSpec, ClusterModeSpec}
+import com.typesafe.spark.test.mesos.{ClientModeSpec, ClusterModeSpec}
 
 case class RoleConfigInfo(role: String, attributes: String, roleCpus: String)
 

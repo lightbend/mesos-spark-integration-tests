@@ -42,7 +42,7 @@ libraryDependencies ++= addSparkDependencies(sparkHome.value) ++ Seq(
 
 val mit = inputKey[Unit]("Runs spark/mesos integration tests.")
 
-mainClass := Some("org.typesafe.spark.mesos.framework.runners.MesosIntegrationTestRunner")
+mainClass := Some("com.typesafe.spark.test.mesos.framework.runners.MesosIntegrationTestRunner")
 
 //invoking inputtasks is weird in sbt. TODO simplify this
 def runMainInCompile(sparkHome: String,

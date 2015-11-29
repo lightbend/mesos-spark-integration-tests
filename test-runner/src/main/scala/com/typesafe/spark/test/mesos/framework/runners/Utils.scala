@@ -1,11 +1,11 @@
-package org.typesafe.spark.mesos.framework.runners
+package com.typesafe.spark.test.mesos.framework.runners
 
 import java.io.{FileInputStream, File}
 import java.net.{InetAddress, ServerSocket, Socket}
 import java.util.concurrent._
 
 import com.typesafe.config.Config
-import mesostest.mesosstate.MesosCluster
+import com.typesafe.spark.test.mesos.mesosstate.MesosCluster
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs._
 
