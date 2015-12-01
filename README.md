@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/typesafehub/mesos-spark-integration-tests.svg?branch=master)](https://travis-ci.org/typesafehub/mesos-spark-integration-tests)
+
 # Spark on Mesos Integration Tests Project
 
 The purpose of this project is to provide integration tests for Apache Spark
