@@ -1,5 +1,5 @@
-language: Scala
-script: sbt package
+language: scala
+script: sbt compile
 
 cache:
   directories:
