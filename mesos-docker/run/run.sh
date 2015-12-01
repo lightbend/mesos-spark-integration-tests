@@ -6,6 +6,7 @@
 # there is a bug on the mesos side and spark may need patching.
 ################################################################################
 
+set -e
 
 ################################ VARIABLES #####################################
 
@@ -90,8 +91,8 @@ function generate_application_conf_file {
   sed -i -- "s@replace_with_docker_host_ip@$host_ip@g" "$target_location/mit-application.conf"
   sed -i -- "s@replace_with_spark_executor_ui@$spark_tgz_file@g" "$target_location/mit-application.conf"
 
-  #remove any temp file generated
-  rm "$target_location/mit-application.conf--"
+  #remove any temp file generated (on OS X)
+  rm -f "$target_location/mit-application.conf--"
 
   printMsg "---------------------------"
   printMsg "Generated application.conf file can be found here: $target_location/mit-application.conf"
