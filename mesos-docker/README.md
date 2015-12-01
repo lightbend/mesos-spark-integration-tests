@@ -202,3 +202,15 @@ and connect to the master as follows:
 ```sh
 ./spark-shell --master mesos://172.17.42.1:5050 --conf spark.mesos.role=role --conf spark.mesos.constraints="spark:only"
 ```
+
+
+Alternatively you can use the slaves-config.json.template file to
+pass different configurations per slave. For now only resources and atrributes
+are supported. We use the jq utility available both in Ubuntu and OS X.
+An example of using the file would be:
+
+```sh
+./run.sh --mesos-master-config "--roles=spark_role" --slaves-cfg-file slaves-config.json.template
+```
+
+Note: Using a configuration file overrides the number of slaves started and takes precedence over --number-of-slaves or the default value.
