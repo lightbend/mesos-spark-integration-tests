@@ -158,10 +158,10 @@ function start_master {
   check_if_service_is_running mesos-master 5050
 
   if [[ -n $INSTALL_HDFS ]]; then
-    docker exec -it $MASTER_CONTAINER_NAME /bin/bash /var/hadoop/hadoop_setup.sh
-    docker exec -it $MASTER_CONTAINER_NAME /usr/local/bin/hdfs namenode -format -nonInterActive
-    docker exec -it $MASTER_CONTAINER_NAME /usr/local/sbin/hadoop-daemon.sh --script hdfs start namenode
-    docker exec -it $MASTER_CONTAINER_NAME /usr/local/sbin/hadoop-daemon.sh --script hdfs start datanode
+    docker exec $MASTER_CONTAINER_NAME /bin/bash /var/hadoop/hadoop_setup.sh
+    docker exec $MASTER_CONTAINER_NAME /usr/local/bin/hdfs namenode -format -nonInterActive
+    docker exec $MASTER_CONTAINER_NAME /usr/local/sbin/hadoop-daemon.sh --script hdfs start namenode
+    docker exec $MASTER_CONTAINER_NAME /usr/local/sbin/hadoop-daemon.sh --script hdfs start datanode
   fi
 
 }
@@ -288,8 +288,8 @@ function start_slaves {
     check_if_service_is_running mesos-slave $((5050 + $i))
 
     if [[ -n $INSTALL_HDFS ]]; then
-      docker exec -it "$SLAVE_CONTAINER_NAME"_"$i" /bin/bash /var/hadoop/hadoop_setup.sh SLAVE
-      docker exec -it "$SLAVE_CONTAINER_NAME"_"$i" /usr/local/sbin/hadoop-daemon.sh --script hdfs start datanode
+      docker exec "$SLAVE_CONTAINER_NAME"_"$i" /bin/bash /var/hadoop/hadoop_setup.sh SLAVE
+      docker exec "$SLAVE_CONTAINER_NAME"_"$i" /usr/local/sbin/hadoop-daemon.sh --script hdfs start datanode
     fi
 
   done
@@ -520,6 +520,14 @@ function parse_args {
     else
       exitWithMsg "File $SLAVES_CONFIG_FILE does not exist..."
     fi
+  fi
+
+  if [[ -n $SPARK_BINARY_PATH ]]; then
+   SPARK_FILE=${SPARK_BINARY_PATH##*/}
+  fi
+
+  if [[ -n $HADOOP_BINARY_PATH ]]; then
+   HADOOP_FILE=${HADOOP_BINARY_PATH##*/}
   fi
 
 }
