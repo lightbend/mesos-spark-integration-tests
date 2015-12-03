@@ -522,6 +522,9 @@ function parse_args {
     fi
   fi
 
+  # Get the filename only, remove full path.Variable substitution is used.
+  # Removes the longest prefix that matches the regular expression */.
+  # It returns the same value as basename.
   if [[ -n $SPARK_BINARY_PATH ]]; then
    SPARK_FILE=${SPARK_BINARY_PATH##*/}
   fi
