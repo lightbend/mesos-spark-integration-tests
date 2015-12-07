@@ -334,7 +334,7 @@ if [[ -n $INSTALL_HDFS ]]; then
 HDFS_SNIPPET_1="<div class=\"my_item\"><a data-toggle=\"tooltip\" data-placement=\"top\" data-original-title=\"$(docker_ip):50070\" href=\"http://$(docker_ip):50070\">Hadoop UI</a></div>\
 <div>HDFS url: hdfs://$(docker_ip):8020</div>"
 HDFS_SNIPPET_OUT="<div> <a href=\"#\" id=\"hho_link\"> Hadoop Healthcheck output </a></div> \
-<div id=\"hho\" class=\"my_item\"><pre>$(docker exec -it spm_master hdfs dfsadmin -report)</pre></div>"
+<div id=\"hho\" class=\"my_item\"><pre>$(docker exec spm_master hdfs dfsadmin -report)</pre></div>"
 fi
 
 MESOS_OUTPUT="$(curl -s http://$(docker_ip):5050/master/state.json | python -m json.tool)"
