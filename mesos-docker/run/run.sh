@@ -314,7 +314,7 @@ for i in `seq 1 $NUMBER_OF_SLAVES` ; do
 HTML_SNIPPET=$HTML_SNIPPET"<div>Slave $i: $(docker_ip):$((5050 + $i))</div>"
 done
 
-read -d '' node_info <<EOF
+node_info=$(cat <<EOF
 
 <div class="my_item">Total Number of Nodes: $TOTAL_NODES (1 Master, $NUMBER_OF_SLAVES Slave(s))</div>
 <div>Mesos Master: $(docker_ip):5050 </div>
@@ -324,6 +324,7 @@ $HTML_SNIPPET
 
 <div class="alert alert-success" role="alert">Your cluster is up and running!</div>
 EOF
+)
 
 replace_in_htmlfile_multi "$node_info" "REPLACE_NODES" "$SCRIPTPATH/template.html" "$SCRIPTPATH/index.html"
 
@@ -338,7 +339,7 @@ fi
 
 MESOS_OUTPUT="$(curl -s http://$(docker_ip):5050/master/state.json | python -m json.tool)"
 
-read -d '' dash_info <<EOF
+dash_info=$(cat <<EOF
 <div> <a data-toggle="tooltip" data-placement="top" data-original-title="$(docker_ip):5050" href="http://$(docker_ip):5050">Mesos UI</a> </div>
 $HDFS_SNIPPET_1
 <div>Spark Uri: /var/spark/${SPARK_FILE} </div>
@@ -349,7 +350,7 @@ $HDFS_SNIPPET_OUT
 <div id="mho"><pre>$MESOS_OUTPUT</pre></div>
 <div style="margin-top:10px;" class="alert alert-success" role="alert">Your cluster is up and running!</div>
 EOF
-
+)
 replace_in_htmlfile_multi "$dash_info" "REPLACE_DASHBOARDS" "$SCRIPTPATH/index.html" "$SCRIPTPATH/index.html"
 
 }
