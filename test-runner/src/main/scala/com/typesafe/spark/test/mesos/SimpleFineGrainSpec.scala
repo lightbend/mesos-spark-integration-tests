@@ -1,5 +1,7 @@
 package com.typesafe.spark.test.mesos
 
+import org.scalatest.Assertions._
+
 import com.typesafe.spark.test.mesos.mesosstate.MesosCluster
 
 trait SimpleFineGrainSpec { self: MesosIntTestHelper =>

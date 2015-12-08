@@ -1,7 +1,10 @@
 package com.typesafe.spark.test.mesos
 
+import org.scalatest.Assertions._
+
 import com.typesafe.spark.test.mesos.mesosstate.MesosCluster
 import com.typesafe.spark.test.mesos.framework.runners.RoleConfigInfo
+
 
 trait RolesSpec { self: MesosIntTestHelper =>
 
