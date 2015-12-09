@@ -41,23 +41,27 @@ object MesosCluster {
 }
 
 case class Resources(cpu: Int, disk: Double, mem: Double)
-case class ReservedResourcesPerRole(roleName:String, resources: Resources)
+case class ReservedResourcesPerRole(roleName: String, resources: Resources)
 
 case class MesosFramework (frameworkId: String, name: String, tasks: List[MesosTask], resources: Resources, active: Boolean)
-case class MesosSlave(slaveId:String, resources: Resources, unreservedResources: Resources, usedResources:
-Resources, roleResources:List[ReservedResourcesPerRole])
+case class MesosSlave(
+    slaveId: String,
+    resources: Resources,
+    unreservedResources: Resources,
+    usedResources: Resources,
+    roleResources: List[ReservedResourcesPerRole])
 
 object MesosSlave {
 
   def apply(c: Config): MesosSlave = {
     val slaveId = c.getString("id")
     import collection.JavaConverters._
-    val reserved= c.getObject("reserved_resources").unwrapped().asScala.
-      map{ x =>
-        val res=Resources(c.getInt(s"reserved_resources.${x._1}.cpus"),
+    val reserved = c.getObject("reserved_resources").unwrapped().asScala.
+      map { x =>
+        val res = Resources(c.getInt(s"reserved_resources.${x._1}.cpus"),
           c.getInt(s"reserved_resources.${x._1}.mem"),
           c.getInt(s"reserved_resources.${x._1}.disk"))
-        ReservedResourcesPerRole(x._1,res)
+        ReservedResourcesPerRole(x._1, res)
       } .toList
 
     val resources = Resources(
@@ -82,7 +86,7 @@ object MesosSlave {
 object MesosFramework {
   def apply(c: Config): MesosFramework = {
     import collection.JavaConverters._
-    val tasks: List[MesosTask] = c.getConfigList("tasks").asScala.map{
+    val tasks: List[MesosTask] = c.getConfigList("tasks").asScala.map {
       MesosTask(_)
     }(collection.breakOut)
     val active = c.getBoolean("active")

@@ -21,10 +21,10 @@ object Utils {
     val server = new ServerSocket(config.getInt("test.runner.port"))
     val failures: Future[Int] = startServerForResults(server, pool)
     val timeout = config.getDuration("test.timeout", TimeUnit.MILLISECONDS)
-    //run the job
+    // run the job
     try {
       job
-      //return the result of the test
+      // return the result of the test
       failures.get(timeout, TimeUnit.MILLISECONDS)
     } finally {
       server.close()
@@ -32,16 +32,16 @@ object Utils {
     }
   }
 
-
-  def startServerForResults(server: ServerSocket, pool: ExecutorService) = {
+  def startServerForResults(server: ServerSocket, pool: ExecutorService): Future[Int] = {
 
     def handleConnection(socket: Socket): Int = {
       val source = new BufferedSource(socket.getInputStream)
       var failures = 0
       for (line <- source.getLines()) {
         println(line)
-        if (line.contains("FAILED"))
+        if (line.contains("FAILED")) {
           failures += 1
+        }
       }
       source.close()
       socket.close()
@@ -57,9 +57,9 @@ object Utils {
     })
   }
 
-  def killAnyRunningFrameworks(mesosConsoleUrl: String) = {
+  def killAnyRunningFrameworks(mesosConsoleUrl: String): Unit = {
     val cluster = MesosCluster.loadStates(mesosConsoleUrl)
-    //TODO: using curl, is it available in all platform
+    // TODO: using curl, is it available in all platform
     cluster.frameworks.foreach { framework =>
       printMsg(s"Killing framework ${framework.frameworkId}")
       val p = Process("curl",
@@ -71,10 +71,10 @@ object Utils {
     }
   }
 
-  def submitSparkJob(jobDesc: String, jobArgs: String*)(implicit config: Config) = {
+  def submitSparkJob(jobDesc: String, jobArgs: String*)(implicit config: Config): Unit = {
     val cmd: Seq[String] = Seq(jobDesc) ++ jobArgs
 
-    val env =  ArrayBuffer(
+    val env = ArrayBuffer(
       "MESOS_NATIVE_JAVA_LIBRARY" -> mesosNativeLibraryLocation()
     )
 
@@ -104,11 +104,11 @@ object Utils {
   }
 
   def startMesosDispatcher(sparkHome: String, sparkExecutorPath: String, mesosMasterUrl: String)(implicit config: Config): String = {
-    //stop any running mesos dispatcher first
+    // stop any running mesos dispatcher first
     val result = stopMesosDispatcher(sparkHome)
     printMsg(s"Stopped mesos dispatcher $result")
 
-    //TODO: make the port configurable
+    // TODO: make the port configurable
     val dispatcherPort = config.getInt("mesos.dispatcher.port")
     val dispatcherHost = InetAddress.getLocalHost().getHostName()
 
@@ -136,14 +136,14 @@ object Utils {
     s"mesos://${dispatcherHost}:${dispatcherPort}"
   }
 
-  //looks up the env variable MESOS_NATIVE_JAVA_LIBRARY first and falls back to
-  //"mesos.native.library.location" config property.
+  // looks up the env variable MESOS_NATIVE_JAVA_LIBRARY first and falls back to
+  // "mesos.native.library.location" config property.
   def mesosNativeLibraryLocation()(implicit config: Config): String = {
     scala.sys.env.getOrElse("MESOS_NATIVE_JAVA_LIBRARY",
       config.getString("mesos.native.library.location"))
   }
 
-  def copyApplicationJar(jar: String, uri: String) = {
+  def copyApplicationJar(jar: String, uri: String): String = {
     System.setProperty("HADOOP_USER_NAME", "root")
     val fileName = new File(jar).getName
     val path = new Path("/app/" + fileName)
@@ -178,13 +178,13 @@ object ServiceUtil {
       p = Some(new Socket(host, port))
       res = true
     } catch {
-      case e: Exception => //do nothing we will retry
+      case e: Exception => // do nothing we will retry
     } finally {
       if (p.isDefined) {
         try {
           p.get.close()
         } catch {
-          case e: Exception => e.printStackTrace() //closing stream failed, print stack
+          case e: Exception => e.printStackTrace() // closing stream failed, print stack
         }
       }
     }
@@ -221,5 +221,4 @@ object ServiceUtil {
     }
     }.size != numOfTries
   }
-
 }

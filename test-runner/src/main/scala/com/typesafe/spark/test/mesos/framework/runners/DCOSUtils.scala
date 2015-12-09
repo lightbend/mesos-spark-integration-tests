@@ -6,7 +6,7 @@ import com.typesafe.config.Config
 
 object DCOSUtils {
 
-  def waitForSparkJobDCOS(submissionId : String)(implicit config: Config) = {
+  def waitForSparkJobDCOS(submissionId : String)(implicit config: Config): Unit = {
     var completed = false
     while (!completed) {
       val stdout = "dcos task --completed" !!
@@ -19,7 +19,7 @@ object DCOSUtils {
     }
   }
 
-  def getLogOutputDCOS(taskId : String) = {
+  def getLogOutputDCOS(taskId : String): String = {
     val cmd = s"dcos task log --completed --lines=1000 ${taskId}"
     printMsg(s"Running cmd: ${cmd}")
     cmd !!

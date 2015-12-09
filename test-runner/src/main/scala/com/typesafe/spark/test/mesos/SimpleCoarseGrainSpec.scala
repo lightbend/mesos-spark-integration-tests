@@ -18,7 +18,7 @@ trait SimpleCoarseGrainSpec { self: MesosIntTestHelper =>
     assert(m.sparkFramework.isDefined, "The driver should be running")
 
     // TODO: Review this assertion.  We generally don't have any guarantees over which nodes run the spark job.
-    //get number of slaves as each slave will be running a long running Spark task
+    // get number of slaves as each slave will be running a long running Spark task
     // val numUnReservedSlaves = m.slaves.filter(s => s.roleResources.isEmpty).size
     // assert(numUnReservedSlaves == m.sparkFramework.get.tasks.size,
       // "One task per slave should be running, since it's coarse grain mode")
