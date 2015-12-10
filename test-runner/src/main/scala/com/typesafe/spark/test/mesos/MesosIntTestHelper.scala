@@ -1,8 +1,15 @@
 package com.typesafe.spark.test.mesos
 
-import com.typesafe.spark.test.mesos.mesosstate.MesosCluster
-import org.apache.spark.{SparkConf, SparkContext}
-import org.scalatest.FunSuite
+import java.util.concurrent.TimeoutException
+
+import scala.concurrent.Await
+import scala.concurrent.ExecutionContext.Implicits
+import scala.concurrent.Future
+
+import org.scalatest.{ Finders, FunSuite }
+import org.scalatest.time.SpanSugar
+
+import org.apache.spark.{ SparkConf, SparkContext }
 
 object MesosIntTestHelper {
   import org.scalatest.time.SpanSugar._
@@ -23,6 +30,9 @@ trait MesosIntTestHelper { self: FunSuite =>
    * @return ()
    */
   def runSparkTest(name: String, ps: (String, String)*)(t: (SparkContext) => Unit) {
+    import scala.concurrent.ExecutionContext.Implicits._
+    import scala.concurrent.duration._
+
     test(name) {
       val sparkConf = new SparkConf()
         .setAppName(s"$SPARK_FRAMEWORK_PREFIX-$name")
@@ -34,7 +44,18 @@ trait MesosIntTestHelper { self: FunSuite =>
         sparkConf.set(key, value)
       }
 
-      val sc = new SparkContext(sparkConf)
+      // this may block forever if the Mesos driver is killed on another thread
+      val futureContext = Future { new SparkContext(sparkConf) }
+
+      // fail if we can't connect to the master sufficiently fast
+      // TODO: make the timeout configurable
+      val sc = try {
+        Await.result(futureContext, 10 seconds)
+      } catch {
+        case _: TimeoutException =>
+          fail("Could not obtain a SparkContext in due time, check logs for Mesos errors")
+      }
+
       try {
         t(sc)
       } finally {

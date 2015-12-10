@@ -9,6 +9,10 @@ case class RoleConfigInfo(role: String, attributes: String, roleCpus: String)
 object SparkJobRunner {
 
   def main(args: Array[String]): Unit = {
+    // this makes sure `System.exit` does not terminate the process
+    // and ScalaTest gets a chance to collect the failing test result
+    System.setSecurityManager(NoExitSecurityManager)
+
     val mesosConsoleUrl = args(0)
     val deployMode = args(1)
     val cfg = RoleConfigInfo(args(2), args(3), args(4))
