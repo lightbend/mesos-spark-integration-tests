@@ -3,6 +3,7 @@ package com.typesafe.spark.test.mesos.framework.runners
 import Utils._
 import sys.process._
 import com.typesafe.config.Config
+import scala.language.postfixOps
 
 object DCOSUtils {
 
