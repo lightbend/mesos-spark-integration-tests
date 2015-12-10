@@ -1,6 +1,8 @@
 package com.typesafe.spark.test.mesos
 
 import com.typesafe.spark.test.mesos.mesosstate.MesosCluster
+import org.scalatest.Assertions._
+
 
 trait SimpleCoarseGrainSpec { self: MesosIntTestHelper =>
 
@@ -21,5 +23,4 @@ trait SimpleCoarseGrainSpec { self: MesosIntTestHelper =>
     // assert(numUnReservedSlaves == m.sparkFramework.get.tasks.size,
       // "One task per slave should be running, since it's coarse grain mode")
   }
-
 }

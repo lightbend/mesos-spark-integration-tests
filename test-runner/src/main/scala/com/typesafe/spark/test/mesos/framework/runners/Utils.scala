@@ -16,16 +16,16 @@ import sys.process._
 
 object Utils {
 
-  def runSparkJobAndCollectResult(job: => Unit)(implicit config: Config): List[String] = {
+  def runSparkJobAndCollectResult(job: => Unit)(implicit config: Config): Int = {
     val pool = Executors.newSingleThreadExecutor()
     val server = new ServerSocket(config.getInt("test.runner.port"))
-    val results: Future[List[String]] = startServerForResults(server, pool)
+    val failures: Future[Int] = startServerForResults(server, pool)
     val timeout = config.getDuration("test.timeout", TimeUnit.MILLISECONDS)
     //run the job
     try {
       job
       //return the result of the test
-      results.get(timeout, TimeUnit.MILLISECONDS)
+      failures.get(timeout, TimeUnit.MILLISECONDS)
     } finally {
       server.close()
       pool.shutdown()
@@ -35,16 +35,21 @@ object Utils {
 
   def startServerForResults(server: ServerSocket, pool: ExecutorService) = {
 
-    def handleConnection(socket: Socket): List[String] = {
+    def handleConnection(socket: Socket): Int = {
       val source = new BufferedSource(socket.getInputStream)
-      val results = source.getLines().toList
+      var failures = 0
+      for (line <- source.getLines()) {
+        println(line)
+        if (line.contains("FAILED"))
+          failures += 1
+      }
       source.close()
       socket.close()
-      results
+      failures
     }
 
-    pool.submit(new Callable[List[String]] {
-      override def call(): List[String] = {
+    pool.submit(new Callable[Int] {
+      override def call(): Int = {
         val socket = server.accept()
         val taskResults = handleConnection(socket)
         taskResults

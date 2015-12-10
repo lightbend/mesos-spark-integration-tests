@@ -11,7 +11,7 @@ import scala.sys.process.Process
 
 object ClusterModeRunner {
 
-  def run(args: Array[String])(implicit config: Config) = {
+  def run(args: Array[String])(implicit config: Config): Int = {
     val sparkHome = args(0)
     val mesosMasterUrl = args(1)
     val applicationJarPath = args(2)
