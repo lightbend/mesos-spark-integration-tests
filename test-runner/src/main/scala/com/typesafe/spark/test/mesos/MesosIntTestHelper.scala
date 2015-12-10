@@ -42,4 +42,9 @@ trait MesosIntTestHelper { self: FunSuite =>
       }
     }
   }
+
+  def ignoreSparkTest(name: String, ps: (String, String)*)(t: (SparkContext) => Unit) {
+    ignore(name) {
+    }
+  }
 }
