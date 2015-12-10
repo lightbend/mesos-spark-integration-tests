@@ -13,9 +13,6 @@ object MesosIntegrationTestRunner {
 
     val failures: Int = ClientModeRunner.run(args) + ClusterModeRunner.run(args)
 
-    printMsg("TestResults:")
-    //result.foreach(printMsg)
-
     if (failures > 0) {
       val suffix = if (failures > 1) "s" else ""
       printMsg(Console.RED + s"ERROR: $failures test$suffix failed" + Console.RESET)

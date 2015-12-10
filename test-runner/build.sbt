@@ -10,6 +10,20 @@ val sparkVersion = "1.5.1"
 
 val sparkHome = SettingKey[Option[String]]("spark-home", "the value of the variable 'spark.home'")
 
+//
+// Scala Style setup: run scalastyle after compilation, as part of the `package` task
+//
+
+val compileScalastyle = taskKey[Unit]("compileScalastyle")
+
+compileScalastyle := org.scalastyle.sbt.ScalastylePlugin.scalastyle.in(Compile).toTask("").value
+
+compileScalastyle <<= compileScalastyle dependsOn (compile in Compile)
+
+(packageBin in Compile) <<= (packageBin in Compile) dependsOn compileScalastyle
+
+assembly <<= assembly dependsOn compileScalastyle
+
 def assemblyJarPath(sparkHome: String): String = {
   val sparkHomeFile = file(sparkHome)
   val assemblyJarFilter = (sparkHomeFile / "lib") * "spark-assembly-*.jar"

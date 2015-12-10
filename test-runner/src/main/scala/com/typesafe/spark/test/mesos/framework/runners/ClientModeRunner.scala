@@ -11,15 +11,15 @@ import scala.io.BufferedSource
 
 object ClientModeRunner {
 
-  def run(args: Array[String])(implicit config: Config) = {
+  def run(args: Array[String])(implicit config: Config): Int = {
 
     val sparkHome = args(0)
     val mesosMasterUrl = args(1)
     val applicationJarPath = args(2)
     val mesosConsoleUrl = mesosMasterUrl.replaceAll("mesos://", "http://")
 
-    //make sure we kill any running mesos frameworks. Right now if we run
-    //mesos dispatcher it doesn't die automatically
+    // make sure we kill any running mesos frameworks. Right now if we run
+    // mesos dispatcher it doesn't die automatically
     killAnyRunningFrameworks(mesosConsoleUrl)
 
     runSparkJobAndCollectResult {

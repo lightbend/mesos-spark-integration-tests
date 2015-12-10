@@ -45,7 +45,7 @@ trait RolesSpec { self: MesosIntTestHelper =>
       // TODO: add message
       assert(m.slaves.flatMap { x => x.roleResources.map { y => y.roleName } }.contains(cfg.role))
 
-      //make sure reserved resources for that role are used
+      // make sure reserved resources for that role are used
       m.slaves.foreach {
         x =>
           val reserved = x.roleResources.filter(r => r.roleName == cfg.role).head
@@ -56,7 +56,6 @@ trait RolesSpec { self: MesosIntTestHelper =>
 
       // TODO: add message
       assert(m.sparkFramework.get.resources.cpu == cfg.roleCpus.toInt)
-
     }
   }
 }
