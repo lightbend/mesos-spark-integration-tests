@@ -21,6 +21,11 @@
     <value>1</value>
   </property>
 
+  <property>
+    <name>dfs.blocksize</name>
+    <value>8m</value>
+  </property>
+
   <!-- Enable dynamic created containers to register as datanodes -->
   <property>
     <name>dfs.namenode.datanode.registration.ip-hostname-check</name>
