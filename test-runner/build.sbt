@@ -32,7 +32,7 @@ def addSparkDependencies(sparkHome: Option[String]) = if (sparkHome.isDefined) {
 sparkHome := sys.props.get("spark.home")
 
 libraryDependencies ++= addSparkDependencies(sparkHome.value) ++ Seq(
- "org.apache.hadoop" % "hadoop-client"    % "2.6.1" excludeAll(
+ "org.apache.hadoop" % "hadoop-client"    % "2.6.1" % "provided" excludeAll(
    ExclusionRule(organization = "commons-beanutils"),
    ExclusionRule(organization = "org.apache.hadoop", name ="hadoop-yarn-api")),
  "org.scalatest"     %% "scalatest"       % "2.2.4",
@@ -41,6 +41,11 @@ libraryDependencies ++= addSparkDependencies(sparkHome.value) ++ Seq(
  "commons-io"        % "commons-io"       % "2.4"
 )
 
+
+// This is a bit of a hack: since Hadoop is a "provided" dependency (scraps 40MB off the assembly jar)
+// we need use the compilation classpath when running. The assembly jar (without Hadoop) will run fine
+// on the cluster, since the Spark assmebly has it.
+runMain in Compile <<= Defaults.runMainTask(fullClasspath in Compile, runner in (Compile, run))
 
 val mit = inputKey[Unit]("Runs spark/mesos integration tests.")
 val dcos = inputKey[Unit]("Runs spark/DCOS integration tests.")
