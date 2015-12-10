@@ -9,34 +9,36 @@ trait RolesSpec { self: MesosIntTestHelper =>
 
   def cfg: RoleConfigInfo
 
-  runSparkTest("simple count in fine fine grain mode with role", "spark.mesos.coarse" -> "false",
-    "spark.mesos.role" -> cfg.role, "spark.cores.max" -> cfg.roleCpus) { sc =>
-      val rdd = sc.makeRDD(1 to 5)
-      val res = rdd.sum()
+  runSparkTest("simple count in fine-grain mode with role",
+    "spark.mesos.coarse" -> "false", "spark.mesos.role" -> cfg.role, "spark.cores.max" -> cfg.roleCpus) { sc =>
+    val rdd = sc.makeRDD(1 to 5)
+    val res = rdd.sum()
 
-      assert(15 == res)
+    assert(15 == res)
 
-      val m = MesosCluster.loadStates(mesosConsoleUrl)
-      assert(m.sparkFramework.isDefined, "test driver framework should be running")
+    val m = MesosCluster.loadStates(mesosConsoleUrl)
+    assert(m.sparkFramework.isDefined, "The driver should be running")
 
+    if (cfg.role != "*") {
       // TODO: add message
       assert(m.slaves.flatMap { x => x.roleResources.map { y => y.roleName } }.contains(cfg.role))
 
       // TODO: add message
       assert(m.sparkFramework.get.resources.cpu == cfg.roleCpus.toInt)
-
     }
+  }
 
-  runSparkTest("simple count in coarse grained mode with role", "spark.mesos.coarse" -> "true",
-    "spark.mesos.role" -> cfg.role, "spark.cores.max" -> cfg.roleCpus) { sc =>
-      val rdd = sc.makeRDD(1 to 5)
-      val res = rdd.sum()
+  runSparkTest("simple count in coarse-grained mode with role",
+    "spark.mesos.coarse" -> "true", "spark.mesos.role" -> cfg.role, "spark.cores.max" -> cfg.roleCpus) { sc =>
+    val rdd = sc.makeRDD(1 to 5)
+    val res = rdd.sum()
 
-      assert(15 == res)
+    assert(15 == res)
 
-      val m = MesosCluster.loadStates(mesosConsoleUrl)
-      assert(m.sparkFramework.isDefined, "spark framework should be running")
+    val m = MesosCluster.loadStates(mesosConsoleUrl)
+    assert(m.sparkFramework.isDefined, "The driver should be running")
 
+    if (cfg.role != "*") {
       // TODO: add message
       assert(m.slaves.flatMap { x => x.roleResources.map { y => y.roleName } }.contains(cfg.role))
 
@@ -53,4 +55,5 @@ trait RolesSpec { self: MesosIntTestHelper =>
       assert(m.sparkFramework.get.resources.cpu == cfg.roleCpus.toInt)
 
     }
+  }
 }

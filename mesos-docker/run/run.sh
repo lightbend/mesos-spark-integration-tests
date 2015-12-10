@@ -85,11 +85,11 @@ function generate_application_conf_file {
   source_location="$SCRIPTPATH/../../test-runner/src/main/resources"
   target_location="$SCRIPTPATH/../../test-runner"
 
-  \cp "$source_location/application.conf" "$target_location/mit-application.conf"
+  \cp "$source_location/application.conf.template" "$target_location/mit-application.conf"
   sed -i -- "s@replace_with_mesos_lib@$mesos_native_lib@g" "$target_location/mit-application.conf"
   sed -i -- "s@replace_with_hdfs_uri@$hdfs_url@g" "$target_location/mit-application.conf"
   sed -i -- "s@replace_with_docker_host_ip@$host_ip@g" "$target_location/mit-application.conf"
-  sed -i -- "s@replace_with_spark_executor_ui@$spark_tgz_file@g" "$target_location/mit-application.conf"
+  sed -i -- "s@replace_with_spark_executor_uri@$spark_tgz_file@g" "$target_location/mit-application.conf"
 
   #remove any temp file generated (on OS X)
   rm -f "$target_location/mit-application.conf--"

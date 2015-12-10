@@ -1,5 +1,6 @@
 package com.typesafe.spark.test.mesos
 
+import com.typesafe.spark.test.mesos.mesosstate.MesosCluster
 import org.apache.spark.{SparkConf, SparkContext}
 import org.scalatest.FunSuite
 

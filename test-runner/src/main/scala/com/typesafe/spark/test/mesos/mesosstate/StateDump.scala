@@ -14,9 +14,10 @@ object MesosState extends Enumeration {
 
 import MesosState._
 
-case class MesosCluster(numberOfSlaves: Int, frameworks: List[MesosFramework], slaves: List[MesosSlave]) {
+
+case class MesosCluster(frameworks: List[MesosFramework], slaves: List[MesosSlave]) {
   def sparkFramework: Option[MesosFramework] =
-    frameworks.find(f => f.name.startsWith(MesosIntTestHelper.SPARK_FRAMEWORK_PREFIX))
+    frameworks.find(f => f.active && f.name.startsWith(MesosIntTestHelper.SPARK_FRAMEWORK_PREFIX))
 }
 
 
@@ -25,10 +26,9 @@ object MesosCluster {
     import collection.JavaConverters._
     val frameworks: List[MesosFramework] =
       c.getConfigList("frameworks").asScala.map(MesosFramework.apply)(collection.breakOut)
-    val slaveCount = c.getConfigList("slaves").size()
     val slaves = c.getConfigList("slaves").asScala.map(MesosSlave.apply).toList
 
-    MesosCluster(slaveCount, frameworks, slaves)
+    MesosCluster(frameworks, slaves)
   }
 
   def apply(url: URL): MesosCluster = {
@@ -43,7 +43,7 @@ object MesosCluster {
 case class Resources(cpu: Int, disk: Double, mem: Double)
 case class ReservedResourcesPerRole(roleName:String, resources: Resources)
 
-case class MesosFramework (frameworkId: String, name: String, tasks: List[MesosTask], resources: Resources)
+case class MesosFramework (frameworkId: String, name: String, tasks: List[MesosTask], resources: Resources, active: Boolean)
 case class MesosSlave(slaveId:String, resources: Resources, unreservedResources: Resources, usedResources:
 Resources, roleResources:List[ReservedResourcesPerRole])
 
@@ -85,6 +85,7 @@ object MesosFramework {
     val tasks: List[MesosTask] = c.getConfigList("tasks").asScala.map{
       MesosTask(_)
     }(collection.breakOut)
+    val active = c.getBoolean("active")
     val frameworkId = c.getString("id")
     val frameworkName = c.getString("name")
     val resources = Resources(
@@ -92,7 +93,7 @@ object MesosFramework {
       c.getInt("resources.disk"),
       c.getInt("resources.mem"))
 
-    MesosFramework(frameworkId, frameworkName, tasks, resources)
+    MesosFramework(frameworkId, frameworkName, tasks, resources, active)
   }
 }
 

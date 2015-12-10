@@ -11,23 +11,30 @@ object SparkJobRunner {
   def main(args: Array[String]): Unit = {
     val mesosConsoleUrl = args(0)
     val deployMode = args(1)
-    val runnerAddress = InetAddress.getByName(args(2))
-    val runnerPort = args(3).toInt
-
-    val cfg = RoleConfigInfo(args(4), args(5), args(6))
+    val cfg = RoleConfigInfo(args(2), args(3), args(4))
 
     val testToRun = deployMode match {
       case "cluster" => new ClusterModeSpec(mesosConsoleUrl, cfg)
       case "client" => new ClientModeSpec(mesosConsoleUrl, cfg)
     }
 
-    val socket = new Socket(runnerAddress, runnerPort)
-    try {
-      Console.withOut(socket.getOutputStream) {
+    if (args.length > 5) {
+      val runnerAddress = InetAddress.getByName(args(5))
+      val runnerPort = args(6).toInt
+
+      val socket = new Socket(runnerAddress, runnerPort)
+      try {
+        Console.withOut(socket.getOutputStream) {
+          org.scalatest.run(testToRun)
+        }
+      } finally {
+        socket.close()
+      }
+    } else {
+      Console.withOut(System.out) {
         org.scalatest.run(testToRun)
       }
-    } finally {
-      socket.close()
     }
+
   }
 }

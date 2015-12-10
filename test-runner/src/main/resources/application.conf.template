@@ -1,0 +1,36 @@
+### spark.* vars are named the same as those used to configure a SparkConf
+spark.role = "spark_role"
+#   The mesos master must be configured with this role.
+spark.attributes = "spark:only"
+spark.roleCpus = "2"
+#   number of cpus to use for spark.core.max in tests using a role. Should be at most the reserved cpus for the role.
+spark.executor.uri = "replace_with_spark_executor_uri"
+# spark.mesos.executor.home = "/spark"
+# spark.driver.host = "192.168.33.1"
+
+### spark_env.* vars are named the same as spark-env.sh vars
+# spark_env.spark_local_ip = "192.168.33.1"
+
+### submit_env.* vars are provided to spark-submit.sh
+# submit_env.libprocess_ip = "192.168.33.1"
+
+test.timeout = 5 minutes
+test.runner.port = 8888
+
+mesos.dispatcher.port = 7088
+mesos.native.library.location = "replace_with_mesos_lib"
+#   Provide full path to the mesos native library. For ubuntu its filename is libmesos.so, for mac its libmesos.dylib
+
+hdfs.uri = "replace_with_hdfs_uri"
+#   Used to copy the application jar file for cluster mode tests
+
+docker.host.ip = "replace_with_docker_host_ip"
+#   The IP address of the host as seen from docker instance. This ip address is used to connect to runner
+#   from docker instance.
+
+### aws.* vars are used to upload jars to S3 so a DCOS cluster can access them.  These are necessary for the DCOS tests.
+# aws.access_key = ""
+# aws.secret_key = ""
+# aws.s3.bucket = ""
+# aws.s3.prefix = ""
+

@@ -1,23 +1,38 @@
 # Spark Mesos integration tests
 
-The goal of this project to provide an adequate test suite for Spark and Mesos integration. These tests should
-run against any Mesos cluster, but for convenience this repository comes with a Docker-based set-up. Check `../mesos-docker` for details.
-Ideally, any developer should be able to checkout this repository and run the test suite on his development machine. 
+The goal of this project to provide an adequate test suite for Spark
+and Mesos integration.  Ideally, any developer should be able to
+checkout this repository and run the test suite on his development
+machine.
 
-## Prerequisite 
+## Prerequisite
 
-This project assumes that you have a Mesos cluster. You can use the scripts in [../mesos-docker](../mesos-docker) to setup one if you don't
-have access to an existing cluster.
+This test suite supports Mesos and DCOS clusters.
 
-## Configure the project
+The Mesos test runner requires you to have a Mesos cluster
+running locally.  You can use the scripts in
+[../mesos-docker](../mesos-docker) to set one up.
 
-There are number of settings that you need to provide for tests to run. Update the [application.conf](src/main/resources/application.conf) with respective values before running the tests. 
+The DCOS test runner requires you to have a DCOS cluster running
+(either locally or remotely).  It also requires that the Spark package
+is installed via `dcos package install spark`.  See install
+instructions [here](https://docs.mesosphere.com/services/spark/).  By
+default, `dcos package install spark` will install the stable version
+of Spark in the DCOS repo.  To configure DCOS to install the version
+of Spark under test, see instructions
+[here](https://github.com/mesosphere/universe).
 
-> In case you are using the Docker-based scripts, a valid configuration file has been saved for
-> your convenience in `./mit-application.conf`. You can either overwrite the existing example in
-> `/src/main/resources`, or pass `-Dconfig.file=mit-application.conf` to Sbt.
+## Configure
 
-##Running the tests
+The tests are primarily configured via
+`src/main/resources/application.conf`.  There are sample configuration
+files provided in that directory for both the mesos-docker and DCOS
+environments. You can copy them to `application.conf`, or pass them in
+via `-Dconfig.file=<file>'
+
+## Run
+
+### Mesos cluster
 
 Invoke the following sbt task by specifying the SPARK_HOME folder and mesos master url
 
@@ -26,4 +41,25 @@ cd mesos-spark-integration-tests
 sbt "mit <spark_home> mesos://<mesos-master-ip>:5050"
 ```
 
-*We use spark_submit.sh from <SPARK_HOME> to submit jobs. So please make sure you have a Spark binary distribution downloaded and unzipped*
+*We use spark_submit.sh from <SPARK_HOME> to submit jobs. So please
+ make sure you have a Spark binary distribution downloaded and
+ unzipped*
+
+### DCOS cluster
+
+The DCOS test runner uploads the Spark test JAR to S3 so the cluster
+can access it.  So the following config vars are required:
+
+```sh
+aws.access_key
+aws.secret_key
+aws.s3.bucket
+aws.s3.prefix
+```
+
+Command:
+
+```sh
+cd mesos-spark-integration-tests
+sbt "dcos <dcos_url>"
+```

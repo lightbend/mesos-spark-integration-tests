@@ -36,13 +36,17 @@ libraryDependencies ++= addSparkDependencies(sparkHome.value) ++ Seq(
    ExclusionRule(organization = "commons-beanutils"),
    ExclusionRule(organization = "org.apache.hadoop", name ="hadoop-yarn-api")),
  "org.scalatest"     %% "scalatest"       % "2.2.4",
- "com.typesafe"      %  "config"          % "1.2.1"
+ "com.typesafe"      %  "config"          % "1.2.1",
+ "com.amazonaws"     % "aws-java-sdk"     % "1.0.002",
+ "commons-io"        % "commons-io"       % "2.4"
 )
 
 
 val mit = inputKey[Unit]("Runs spark/mesos integration tests.")
+val dcos = inputKey[Unit]("Runs spark/DCOS integration tests.")
 
 mainClass := Some("com.typesafe.spark.test.mesos.framework.runners.MesosIntegrationTestRunner")
+val mainDCOSClass = "com.typesafe.spark.test.mesos.framework.runners.DCOSIntegrationTestRunner"
 
 //invoking inputtasks is weird in sbt. TODO simplify this
 def runMainInCompile(sparkHome: String,
@@ -52,6 +56,16 @@ def runMainInCompile(sparkHome: String,
  val main = s"  ${mainClass.value.get} $sparkHome $mesosMasterUrl $applicationJar"
  (runMain in Compile).toTask(main)
 }
+
+
+//invoking inputtasks is weird in sbt. TODO simplify this
+def runMainInCompileDCOS(dcosURL: String,
+                         applicationJar: String) = Def.taskDyn {
+
+ val main = s" $mainDCOSClass $dcosURL $applicationJar"
+ (runMain in Compile).toTask(main)
+}
+
 
 mit := Def.inputTaskDyn {
  val args: Seq[String] = spaceDelimited("<arg>").parsed
@@ -73,3 +87,23 @@ mit := Def.inputTaskDyn {
  runMainInCompile(sparkHome, mesosMasterUrl, output.getAbsolutePath)
 
 }.evaluated
+
+dcos := Def.inputTaskDyn {
+ val args: Seq[String] = spaceDelimited("<arg>").parsed
+
+ if(args.size != 1) {
+  val log = streams.value.log
+  log.error("Please provide all the args: <dcos-url>")
+  sys.error("failed")
+ }
+
+ val dcosURL = args(0)
+
+ //depends on assembly task to package the current project
+ val output = assembly.value
+
+ //run the main with args
+ runMainInCompileDCOS(dcosURL, output.getAbsolutePath)
+
+}.evaluated
+
