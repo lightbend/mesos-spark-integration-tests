@@ -26,6 +26,9 @@ compileScalastyle <<= compileScalastyle dependsOn (compile in Compile)
 
 assembly <<= assembly dependsOn compileScalastyle
 
+// trim the assembly even further (20MB in the Scala library)
+assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false)
+
 def assemblyJarPath(sparkHome: String): String = {
   val sparkHomeFile = file(sparkHome)
   val assemblyJarFilter = (sparkHomeFile / "lib") * "spark-assembly-*.jar"

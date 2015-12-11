@@ -22,11 +22,17 @@ object ClientModeRunner {
     // mesos dispatcher it doesn't die automatically
     killAnyRunningFrameworks(mesosConsoleUrl)
 
+    // this file is in `src/main/resources`, but ends up in root on the classpath
+    val logFileConfig = "-Dlog4j.configuration=mit-log4j.properties"
+
     runSparkJobAndCollectResult {
-      val sparkSubmitJobDesc = ArrayBuffer(s"${sparkHome}/bin/spark-submit",
+      val sparkSubmitJobDesc = ArrayBuffer(
+        s"${sparkHome}/bin/spark-submit",
         "--class com.typesafe.spark.test.mesos.framework.runners.SparkJobRunner",
         s"--master $mesosMasterUrl",
-        "--deploy-mode client"
+        "--deploy-mode client",
+        s"""--driver-java-options "$logFileConfig"""",
+        s"""--conf spark.executor.extraJavaOptions="$logFileConfig""""
       )
 
       if (config.hasPath("spark.driver.host")) {
