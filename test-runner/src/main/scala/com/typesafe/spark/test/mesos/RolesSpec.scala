@@ -31,7 +31,7 @@ trait RolesSpec { self: MesosIntTestHelper =>
     }
   }
 
-  runSparkTest("simple count in coarse-grained mode with role",
+  ignoreSparkTest("simple count in coarse-grained mode with role",
     "spark.mesos.coarse" -> "true", "spark.mesos.role" -> cfg.role, "spark.cores.max" -> cfg.roleCpus) { sc =>
     val rdd = sc.makeRDD(1 to 5)
     val res = rdd.sum()
