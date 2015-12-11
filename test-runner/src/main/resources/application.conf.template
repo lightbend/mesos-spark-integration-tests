@@ -14,7 +14,7 @@ spark.executor.uri = "replace_with_spark_executor_uri"
 ### submit_env.* vars are provided to spark-submit.sh
 # submit_env.libprocess_ip = "192.168.33.1"
 
-test.timeout = 5 minutes
+test.timeout = 15 minutes
 test.runner.port = 8888
 
 mesos.dispatcher.port = 7088
