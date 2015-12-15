@@ -14,6 +14,10 @@ An example of combining these two modules to test spark on mesos (assuming a mac
 
 ## Create a cluster
 
+*Important*: Please check sub-project [mesos-docker](mesos-docker/README.md) for supported OSs.
+
+ We also support DCOS see [test-runner](test-runner/README.md) sub-project for more.
+
 - To start the default mesos cluster with HDFS and slave nodes you simply run
 
 	```sh
