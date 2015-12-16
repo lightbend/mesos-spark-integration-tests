@@ -4,15 +4,15 @@ import java.io.{FileInputStream, File}
 import java.net.{InetAddress, ServerSocket, Socket}
 import java.util.concurrent._
 
-import com.typesafe.config.Config
-import com.typesafe.spark.test.mesos.mesosstate.MesosCluster
-import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs._
-
 import scala.collection.mutable.ArrayBuffer
 import scala.io.BufferedSource
-import scala.sys.process.Process
-import sys.process._
+import scala.sys.process._
+
+import com.typesafe.config.Config
+import com.typesafe.spark.test.mesos.mesosstate.MesosCluster
+
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs._
 
 object Utils {
 
@@ -78,10 +78,6 @@ object Utils {
       "MESOS_NATIVE_JAVA_LIBRARY" -> mesosNativeLibraryLocation()
     )
 
-    if (config.hasPath("spark.executor.uri")) {
-      env += ("SPARK_EXECUTOR_URI" -> config.getString("spark.executor.uri"))
-    }
-
     if (config.hasPath("spark_env.spark_local_ip")) {
       env += ("SPARK_LOCAL_IP" -> config.getString("spark_env.spark_local_ip"))
     }
@@ -103,12 +99,24 @@ object Utils {
     println("")
   }
 
+  /**
+   * Start the Mesos cluster dispatcher. It first tries to cleanly shutdown an existing Mesos
+   * dispatcher, if it was running from the same sparkHome
+   *
+   * @param sparkHome The location of Spark files. It will execute `sbin/start-mesos-dispatcher.sh`
+   *                  relative to this variable
+   * @param mesosMasterUrl The real Mesos master, to which to connect.
+   *
+   * @note If there's a dispatcher already running from a different spark home this will start
+   *       another one, running on a different port, without realizing it. This will most likely
+   *       fail everything else, since the project assumes `mesos.dispatcher.port` is the right port
+   *       to talk to.
+   */
   def startMesosDispatcher(sparkHome: String, sparkExecutorPath: String, mesosMasterUrl: String)(implicit config: Config): String = {
     // stop any running mesos dispatcher first
     val result = stopMesosDispatcher(sparkHome)
     printMsg(s"Stopped mesos dispatcher $result")
 
-    // TODO: make the port configurable
     val dispatcherPort = config.getInt("mesos.dispatcher.port")
     val dispatcherHost = InetAddress.getLocalHost().getHostName()
 

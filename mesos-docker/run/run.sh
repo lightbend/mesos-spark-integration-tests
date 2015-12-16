@@ -383,7 +383,7 @@ function show_help {
   -q|quiet no output is shown to the console regarding execution status.
   --number-of-slaves number of slave mesos containers to create (optional, defaults to 1).
   --hadoop-binary-file  the hadoop binary file to use in docker configuration (optional, if not present tries to download the image).
-  --spark-binary-file  the hadoop binary file to use in docker configuration (optional, if not present tries to download the image).
+  --spark-binary-file  the Spark binary file to use in docker configuration (optional, if not present tries to download the image).
   --image-version  the image version to use for the containers (optional, defaults to the latest hardcoded value).
   --no-hdfs to ignore hdfs installation step
   --mem-th the percentage of the host cpus to use for slaves. Default: 0.5.

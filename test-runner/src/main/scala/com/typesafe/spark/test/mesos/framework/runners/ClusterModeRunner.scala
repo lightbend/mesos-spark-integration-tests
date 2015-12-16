@@ -1,13 +1,11 @@
 package com.typesafe.spark.test.mesos.framework.runners
 
-import java.io.File
-import java.net.URL
+import scala.collection.mutable.ArrayBuffer
+import scala.util.Try
+
+import com.typesafe.config.Config
 
 import Utils._
-import com.typesafe.config.Config
-import com.typesafe.spark.test.mesos.mesosstate.MesosCluster
-
-import scala.sys.process.Process
 
 object ClusterModeRunner {
 
@@ -18,7 +16,7 @@ object ClusterModeRunner {
     val mesosConsoleUrl = mesosMasterUrl.replaceAll("mesos://", "http://")
 
     val hostAddress = if (config.hasPath("docker.host.ip")) config.getString("docker.host.ip")
-      else "localhost"
+    else "localhost"
 
     val jarPath = if (config.hasPath("hdfs.uri")) {
       val hdfsUri = config.getString("hdfs.uri")
@@ -39,16 +37,23 @@ object ClusterModeRunner {
     runSparkJobAndCollectResult {
       // start the dispatcher
       val dispatcherUrl = startMesosDispatcher(sparkHome,
-        config.getString("spark.executor.uri"),
-        mesosMasterUrl)
+        config.getString("spark.executor.uri"), mesosMasterUrl)
       printMsg(s"Mesos dispatcher running at $dispatcherUrl")
 
       // run spark submit in cluster mode
-      val sparkSubmitJobDesc = Seq(s"${sparkHome}/bin/spark-submit",
+      val sparkSubmitJobDesc = ArrayBuffer(s"${sparkHome}/bin/spark-submit",
         "--class com.typesafe.spark.test.mesos.framework.runners.SparkJobRunner",
         s"--master $dispatcherUrl",
         s"--driver-memory 512mb",
         s"--deploy-mode cluster")
+
+      if (config.hasPath("spark.executor.uri")) {
+        sparkSubmitJobDesc += s"--conf spark.executor.uri=${config.getString("spark.executor.uri")}"
+      }
+
+      if (config.hasPath("spark.mesos.executor.home")) {
+        sparkSubmitJobDesc += s"--conf spark.mesos.executor.home=${config.getString("spark.mesos.executor.home")}"
+      }
 
       submitSparkJob(sparkSubmitJobDesc.mkString(" "),
         jarPath,
