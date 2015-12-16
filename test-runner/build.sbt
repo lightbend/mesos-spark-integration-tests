@@ -5,7 +5,7 @@ name := "mesos-spark-integration-tests"
 version := "0.1.0"
 scalaVersion := "2.10.5"
 
-scalacOptions ++= Seq("-feature", "-deprecation")
+scalacOptions ++= Seq("-feature", "-deprecation", "-language:postfixOps")
 
 //default Spark version
 val sparkVersion = "1.5.1"
