@@ -32,11 +32,14 @@ object ClientModeRunner {
         s"--master $mesosMasterUrl",
         "--deploy-mode client",
         s"""--driver-java-options "$logFileConfig"""",
-        s"""--conf spark.executor.extraJavaOptions="$logFileConfig""""
-      )
+        s"""--conf spark.executor.extraJavaOptions="$logFileConfig"""")
 
       if (config.hasPath("spark.driver.host")) {
         sparkSubmitJobDesc += s"--conf spark.driver.host=${config.getString("spark.driver.host")}"
+      }
+
+      if (config.hasPath("spark.executor.uri")) {
+        sparkSubmitJobDesc += s"--conf spark.executor.uri=${config.getString("spark.executor.uri")}"
       }
 
       if (config.hasPath("spark.mesos.executor.home")) {
