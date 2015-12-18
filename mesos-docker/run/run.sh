@@ -122,11 +122,37 @@ function check_if_container_is_up {
   fi
 }
 
+function quote_if_non_empty {
+
+  if [[ -n $1 ]];then
+    echo "\"$@\""
+  else
+    echo ""
+  fi
+
+}
+
+function check_mesos_version {
+
+  MIT_MESOS_HOST_VERSION=$(dpkg -s mesos | grep Version | awk '{print $2}')
+  MIT_MESOS_LIB_DOCKER_VERSION=$(docker exec $1 sh -c "dpkg -s mesos | grep Version" |  awk '{print $2}')\
+
+  if [[ ! "$MIT_MESOS_HOST_VERSION" == "$MIT_MESOS_LIB_DOCKER_VERSION" ]]; then
+    printMsg "WARN: Host and Docker images have different versions, Host:$MIT_MESOS_HOST_VERSION, Image: $MIT_MESOS_LIB_DOCKER_VERSION (image always reflects the latest version). Pls upgrade host."
+  fi
+}
+
+
 #start master
 function start_master {
 
   dip=$(docker_ip)
-  start_master_command="/usr/sbin/mesos-master --ip=$dip $MESOS_MASTER_CONFIG"
+
+  start_master_command="/usr/sbin/mesos-master --ip=$dip $(quote_if_non_empty $MESOS_MASTER_CONFIG)"
+
+  upmesos="apt-get update -o Dir::Etc::sourcelist=sources.list.d/mesosphere.list -o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0"
+  start_master_command="$upmesos ; apt-get install --only-upgrade mesos; $start_master_command"
+
   if [[ -n $INSTALL_HDFS ]]; then
     HADOOP_VOLUME="-v $HADOOP_BINARY_PATH:/var/tmp/$HADOOP_FILE"
   else
@@ -152,11 +178,13 @@ function start_master {
   --name $MASTER_CONTAINER_NAME \
   -v "$SCRIPTPATH/hadoop":/var/hadoop \
   -v "$SPARK_BINARY_PATH":/var/spark/$SPARK_FILE  $HADOOP_VOLUME \
-  $DOCKER_USER/$MASTER_IMAGE $start_master_command
+  $DOCKER_USER/$MASTER_IMAGE /bin/bash -c "$start_master_command"
 
   check_if_container_is_up $MASTER_CONTAINER_NAME
 
   check_if_service_is_running mesos-master 5050
+
+  check_mesos_version $MASTER_CONTAINER_NAME
 
   if [[ -n $INSTALL_HDFS ]]; then
     docker exec $MASTER_CONTAINER_NAME /bin/bash /var/hadoop/hadoop_setup.sh
@@ -164,8 +192,8 @@ function start_master {
     docker exec $MASTER_CONTAINER_NAME /usr/local/sbin/hadoop-daemon.sh --script hdfs start namenode
     docker exec $MASTER_CONTAINER_NAME /usr/local/sbin/hadoop-daemon.sh --script hdfs start datanode
   fi
-
 }
+
 
 function get_binaries {
 
@@ -226,7 +254,10 @@ function start_slaves {
   number_of_ports=3
   for i in `seq 1 $NUMBER_OF_SLAVES`;
   do
-    start_slave_command="/usr/sbin/mesos-slave --master=$dip:5050 --ip=$dip $MESOS_SLAVE_CONFIG"
+    start_slave_command="/usr/sbin/mesos-slave --master=$dip:5050 --ip=$dip $(quote_if_non_empty $MESOS_SLAVE_CONFIG)"
+
+    upmesos="apt-get update -o Dir::Etc::sourcelist=sources.list.d/mesosphere.list -o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0"
+    start_slave_command="$upmesos ; apt-get install --only-upgrade mesos; $start_slave_command"
 
     echo "starting slave ...$i"
     cpus=$(calcf $(($(get_cpus)/$NUMBER_OF_SLAVES))*$CPU_TH)
@@ -257,7 +288,7 @@ function start_slaves {
       attributes_cfg=""
     fi
 
-    start_slave_command="$start_slave_command  $resources_cfg $attributes_cfg"
+    start_slave_command="$start_slave_command  $(quote_if_non_empty $resources_cfg) $(quote_if_non_empty $attributes_cfg)"
 
     DEV_STR=
 
@@ -293,7 +324,7 @@ function start_slaves {
     -v  /usr/local/bin/docker:/usr/local/bin/docker \
     -v /var/run/docker.sock:/var/run/docker.sock $DEV_STR \
     -v "$SCRIPTPATH/hadoop":/var/hadoop \
-    $DOCKER_USER/$SLAVE_IMAGE $start_slave_command
+    $DOCKER_USER/$SLAVE_IMAGE /bin/bash -c "$start_slave_command"
 
     check_if_container_is_up "$SLAVE_CONTAINER_NAME"_"$i"
     check_if_service_is_running mesos-slave $((5050 + $i))
