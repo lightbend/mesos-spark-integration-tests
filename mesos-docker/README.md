@@ -4,23 +4,37 @@ The project sets up a cluster of the following components using docker:
 - mesos (supported)
 - spark (supported)
 - hdfs (supported)
-- zookeeper (not supported yet)
-- marathon (not supported yet, needs zookeeper)
+- zookeeper (not supported)
+- marathon (not supported, needs zookeeper)
 
 ## Setup your host machine
 
-You will need: wget and python installed.
+We support OS X (latest) along with the following Ubuntu versions:
 
-**_Install the latest docker version >=1.8.3_**  then execute (only for ubuntu):
+- Ubuntu 15.04 (vivid)
+- Ubuntu 14.04 (trusty)
+- Ubuntu 12.04 (precise)
+
+You will need to have installed the following libraries/programs on your host machine:
+
+- wget
+- python
+- curl
+- docker version >=1.8.3 see [here](https://docs.docker.com/engine/installation/) for detailed instructions:
+- git
+- sbt
+- java 1.8
+- maven
+- latest mesos lib
+
+You can install java Oracle 1.8, git, sbt and maven with the following script under util folder:
 
 ```sh
 sudo su
 ./host_setup_ubuntu.sh
 ```
 
-The script installs the latest mesos library on the system also libapparmor which
-is needed by docker executable due to a [bug](https://github.com/RayRutjes/simple-gitlab-runner/pull/1), and stops mesos services on your local
-host so that the cluster created later can run in net=host mode.
+The script installs among others the latest mesos library on the system and stops mesos services on your localhost so that the cluster created later can run in net=host mode.
 
 ## Build the images or pull them
 

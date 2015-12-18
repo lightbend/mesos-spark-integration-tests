@@ -1,3 +1,4 @@
+
 ################################################################################
 #! /bin/bash
 # Author: skonto
@@ -258,6 +259,17 @@ function start_slaves {
 
     start_slave_command="$start_slave_command  $resources_cfg $attributes_cfg"
 
+    DEV_STR=
+
+    if [[ ! "$(uname)" == "Darwin" ]]; then
+      DEVMAPPATH=$(ldconfig -p | grep 'libdevmapper.so.' | awk '{print $4}')
+      DEVMAPNAME=$(basename $DEVMAPPATH)
+      #the load target path is fixed since we know the OS we have inside the image
+      #if we change OS we need to check that too
+      #not the best choice, but is a fix for now.
+      DEV_STR="-v $DEVMAPPATH:/lib/x86_64-linux-gnu/$DEVMAPNAME"
+    fi
+
     docker run \
     -e "MESOS_PORT=$((5050 + $i))" \
     -e "MESOS_SWITCH_USER=false" \
@@ -279,9 +291,8 @@ function start_slaves {
     -v "$SPARK_BINARY_PATH":/var/spark/$SPARK_FILE $HADOOP_VOLUME \
     -v  /usr/bin/docker:/usr/bin/docker \
     -v  /usr/local/bin/docker:/usr/local/bin/docker \
-    -v /var/run/docker.sock:/var/run/docker.sock \
+    -v /var/run/docker.sock:/var/run/docker.sock $DEV_STR \
     -v "$SCRIPTPATH/hadoop":/var/hadoop \
-    -v /usr/lib/x86_64-linux-gnu/libapparmor.so.1:/usr/lib/x86_64-linux-gnu/libapparmor.so.1:ro \
     $DOCKER_USER/$SLAVE_IMAGE $start_slave_command
 
     check_if_container_is_up "$SLAVE_CONTAINER_NAME"_"$i"

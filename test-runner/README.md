@@ -8,10 +8,17 @@ machine.
 ## Prerequisite
 
 This test suite supports Mesos and DCOS clusters.
+We have two test runners: one for local development (mesos test runner) and one for running the tests on DCOS (DCOS test runner).
 
 The Mesos test runner requires you to have a Mesos cluster
 running locally.  You can use the scripts in
 [../mesos-docker](../mesos-docker) to set one up.
+
+**Note**: For local mode we support several Ubuntu versions, see more here
+[../mesos-docker/README.md](../mesos-docker/README.md).
+
+We also support the latest OS X (Mac users).
+For other OSs a straightforward solution is to use a vm enabled with Ubuntu.
 
 The DCOS test runner requires you to have a DCOS cluster running
 (either locally or remotely).  It also requires that the Spark package

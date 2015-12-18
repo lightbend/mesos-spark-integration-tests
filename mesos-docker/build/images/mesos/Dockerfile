@@ -40,3 +40,5 @@ RUN apt-key adv --keyserver keyserver.ubuntu.com --recv E56151BF && \
     apt-get -y install mesos=$VERSION && \
     apt-get install marathon=$MARATHON_VERSION && \
     rm -rf /var/lib/apt/lists/*
+
+RUN apt-get update && apt-get install libapparmor1
