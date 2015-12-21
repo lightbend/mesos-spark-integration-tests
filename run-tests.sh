@@ -64,6 +64,8 @@ function runTests {
   #shutdown any running cluster
   $SCRIPTPATH/mesos-docker/run/cluster_remove.sh
 
+  #stop any zombie dispatcher ?
+  kill $(ps -ax | awk '/grep/ {next} /MesosClusterDispatcher/ {print $1}')
 
   #start the cluster 
   $SCRIPTPATH/mesos-docker/run/run.sh --spark-binary-file $sparkBinaryFile --mesos-master-config "--roles=spark_role" --mesos-slave-config "--resources=disk(spark_role):10000;cpus(spark_role):1;mem(spark_role):1000;cpus(*):2;mem(*):2000;disk(*):10000"
@@ -74,7 +76,7 @@ function runTests {
 
   #run the tests
   cd $SCRIPTPATH/test-runner
-  sbt -Dconfig.file="./mit-application.conf" "mit $sparkHome mesos://$(docker_ip):5050"
+  sbt -Dspark.home="$sparkHome" -Dconfig.file="./mit-application.conf" "mit $sparkHome mesos://$(docker_ip):5050"
 
   stopDockerMaybe
 
