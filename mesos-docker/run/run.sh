@@ -1,4 +1,3 @@
-
 ################################################################################
 #! /bin/bash
 # Author: skonto
@@ -124,6 +123,10 @@ function check_if_container_is_up {
 
 #start master
 function start_master {
+
+  #pull latest image to get any changes (the image is common between master nad slave so we
+  #need this once). 
+  docker pull $DOCKER_USER/$MASTER_IMAGE
 
   dip=$(docker_ip)
   start_master_command="/usr/sbin/mesos-master --ip=$dip $MESOS_MASTER_CONFIG"
