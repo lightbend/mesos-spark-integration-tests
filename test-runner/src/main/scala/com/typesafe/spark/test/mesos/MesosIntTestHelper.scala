@@ -50,7 +50,7 @@ trait MesosIntTestHelper { self: FunSuite =>
       // fail if we can't connect to the master sufficiently fast
       // TODO: make the timeout configurable
       val sc = try {
-        Await.result(futureContext, 10 seconds)
+        Await.result(futureContext, 30 seconds)
       } catch {
         case _: TimeoutException =>
           fail("Could not obtain a SparkContext in due time, check logs for Mesos errors")
