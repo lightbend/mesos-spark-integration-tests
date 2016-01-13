@@ -71,12 +71,14 @@ object Utils {
     }
   }
 
-  def submitSparkJob(jobDesc: String, jobArgs: String*)(implicit config: Config): Unit = {
+  def submitSparkJob(clientMode: Boolean, jobDesc: String, jobArgs: String*)(implicit config: Config): Unit = {
     val cmd: Seq[String] = Seq(jobDesc) ++ jobArgs
 
-    val env = ArrayBuffer(
-      "MESOS_NATIVE_JAVA_LIBRARY" -> mesosNativeLibraryLocation()
-    )
+    val env: ArrayBuffer[(String, String)] = if (clientMode) {
+      ArrayBuffer("MESOS_NATIVE_JAVA_LIBRARY" -> mesosNativeLibraryLocation())
+    } else {
+      ArrayBuffer()
+    }
 
     if (config.hasPath("spark.executor.uri")) {
       env += ("SPARK_EXECUTOR_URI" -> config.getString("spark.executor.uri"))

@@ -48,7 +48,7 @@ object ClusterModeRunner {
         s"--driver-memory 512mb",
         s"--deploy-mode cluster")
 
-      submitSparkJob(sparkSubmitJobDesc.mkString(" "),
+      submitSparkJob(clientMode = false, sparkSubmitJobDesc.mkString(" "),
         jarPath,
         mesosConsoleUrl,
         "cluster",
