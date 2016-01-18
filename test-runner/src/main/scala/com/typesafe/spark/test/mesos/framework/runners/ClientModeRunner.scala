@@ -43,7 +43,7 @@ object ClientModeRunner {
         sparkSubmitJobDesc += s"--conf spark.mesos.executor.home=${config.getString("spark.mesos.executor.home")}"
       }
 
-      submitSparkJob(sparkSubmitJobDesc.mkString(" "),
+      submitSparkJob(clientMode = true, sparkSubmitJobDesc.mkString(" "),
         applicationJarPath,
         mesosConsoleUrl,
         "client",
