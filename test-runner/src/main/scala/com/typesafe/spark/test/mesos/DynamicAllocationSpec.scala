@@ -12,6 +12,8 @@ trait DynamicAllocationSpec extends Eventually { self: MesosIntTestHelper =>
 
   implicit override val patienceConfig = PatienceConfig(timeout = scaled(Span(30, Seconds)), interval = scaled(Span(500, Millis)))
 
+  val initialExecutorCount = 2
+
   runSparkTest("dynamic allocation, in coarse grain mode",
     "spark.mesos.coarse" -> "true",
     "spark.dynamicAllocation.enabled" -> "true",
@@ -19,8 +21,12 @@ trait DynamicAllocationSpec extends Eventually { self: MesosIntTestHelper =>
     "spark.dynamicAllocation.executorIdleTimeout" -> "3s",
     "spark.dynamicAllocation.maxExecutors" -> "3",
     "spark.dynamicAllocation.minExecutors" -> "1",
-    "spark.dynamicAllocation.initialExecutors" -> "1",
+    "spark.dynamicAllocation.initialExecutors" -> initialExecutorCount.toString,
     "spark.dynamicAllocation.schedulerBacklogTimeout" -> "1s") { sc =>
+
+      val startState = MesosCluster.loadStates(mesosConsoleUrl)
+      val numberOfSlaves = startState.numberOfSlaves
+      val numberOfUnreservedCpus = startState.slaves.map(_.unreservedResources.cpu).sum
 
       eventually {
         // start with 1 executor per slave
@@ -29,7 +35,7 @@ trait DynamicAllocationSpec extends Eventually { self: MesosIntTestHelper =>
         assertResult(true, "test driver framework should be running") {
           m.sparkFramework.isDefined
         }
-        assertResult(1 * m.numberOfSlaves, "One task per slave should be running, at startup, as (BUG) per spark.dynamicAllocation.minExecutors") {
+        assertResult(initialExecutorCount, "Few tasks should be running, at startup, as per spark.dynamicAllocation.initialExecutors") {
           m.sparkFramework.get.nbRunningTasks
         }
       }
@@ -45,10 +51,14 @@ trait DynamicAllocationSpec extends Eventually { self: MesosIntTestHelper =>
         }
       }
 
-      val numberOfSlaves = MesosCluster.loadStates(mesosConsoleUrl).numberOfSlaves
+      // for serialization of the condition in the following RDD transformation
+      val mesosUrl = mesosConsoleUrl
 
-      val rdd = sc.makeRDD(1 to 25, numberOfSlaves).mapPartitions { i =>
-        Thread.sleep(10000)
+      val rdd = sc.makeRDD(1 to 25, numberOfUnreservedCpus).mapPartitions { i =>
+        // wait for the other executors to be started
+        while (MesosCluster.loadStates(mesosUrl).sparkFramework.get.nbRunningTasks != numberOfSlaves)
+          Thread.sleep(1000)
+
         i
       }
       val res = rdd.sum()
@@ -61,7 +71,7 @@ trait DynamicAllocationSpec extends Eventually { self: MesosIntTestHelper =>
         assertResult(true, "test driver framework should be running") {
           m.sparkFramework.isDefined
         }
-        assertResult(1 * m.numberOfSlaves, "One task per slave should be running, after first execution, as per spark.dynamicAllocation.maxExecutors") {
+        assertResult(1 * numberOfSlaves, "One task per slave should be running, after first execution, as per spark.dynamicAllocation.maxExecutors") {
           m.sparkFramework.get.nbRunningTasks
         }
       }
@@ -77,8 +87,11 @@ trait DynamicAllocationSpec extends Eventually { self: MesosIntTestHelper =>
         }
       }
 
-      val rdd2 = sc.makeRDD(1 to 25, numberOfSlaves).mapPartitions { i =>
-        Thread.sleep(20000)
+      val rdd2 = sc.makeRDD(1 to 25, numberOfUnreservedCpus).mapPartitions { i =>
+        // wait for the other executors to be started
+        while (MesosCluster.loadStates(mesosUrl).sparkFramework.get.nbRunningTasks != numberOfSlaves)
+          Thread.sleep(1000)
+
         i
       }
       val res2 = rdd2.sum()
@@ -91,7 +104,7 @@ trait DynamicAllocationSpec extends Eventually { self: MesosIntTestHelper =>
         assertResult(true, "test driver framework should be running") {
           m.sparkFramework.isDefined
         }
-        assertResult(1 * m.numberOfSlaves, "One task per slave should be running, after second execution, as per spark.dynamicAllocation.maxExecutors") {
+        assertResult(1 * numberOfSlaves, "One task per slave should be running, after second execution, as per spark.dynamicAllocation.maxExecutors") {
           m.sparkFramework.get.nbRunningTasks
         }
       }
