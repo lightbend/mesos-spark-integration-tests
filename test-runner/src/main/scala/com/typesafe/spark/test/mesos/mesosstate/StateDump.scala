@@ -40,10 +40,11 @@ object MesosCluster {
   }
 }
 
-case class Resources(cpu: Int, disk: Double, mem: Double)
+case class Resources(cpu: Double, disk: Double, mem: Double)
 case class ReservedResourcesPerRole(roleName: String, resources: Resources)
 
-case class MesosFramework (frameworkId: String, name: String, tasks: List[MesosTask], resources: Resources, active: Boolean)
+case class MesosFramework (frameworkId: String, name: String, tasks: List[MesosTask], resources: Resources,
+                           usedResources : Resources, active: Boolean)
 case class MesosSlave(
     slaveId: String,
     resources: Resources,
@@ -59,25 +60,25 @@ object MesosSlave {
     val reserved = c.getObject("reserved_resources").unwrapped().asScala.
       map { x =>
         val res = Resources(c.getInt(s"reserved_resources.${x._1}.cpus"),
-          c.getInt(s"reserved_resources.${x._1}.mem"),
-          c.getInt(s"reserved_resources.${x._1}.disk"))
+          c.getDouble(s"reserved_resources.${x._1}.mem"),
+          c.getDouble(s"reserved_resources.${x._1}.disk"))
         ReservedResourcesPerRole(x._1, res)
       } .toList
 
     val resources = Resources(
-      c.getInt("resources.cpus"),
-      c.getInt("resources.disk"),
-      c.getInt("resources.mem"))
+      c.getDouble("resources.cpus"),
+      c.getDouble("resources.disk"),
+      c.getDouble("resources.mem"))
 
     val used = Resources(
-      c.getInt("used_resources.cpus"),
-      c.getInt("resources.disk"),
+      c.getDouble("used_resources.cpus"),
+      c.getDouble("resources.disk"),
       c.getInt("resources.mem"))
 
     val unreserved = Resources(
-      c.getInt("unreserved_resources.cpus"),
-      c.getInt("resources.disk"),
-      c.getInt("resources.mem"))
+      c.getDouble("unreserved_resources.cpus"),
+      c.getDouble("resources.disk"),
+      c.getDouble("resources.mem"))
 
     MesosSlave(slaveId, resources, unreserved, used, reserved)
   }
@@ -93,11 +94,16 @@ object MesosFramework {
     val frameworkId = c.getString("id")
     val frameworkName = c.getString("name")
     val resources = Resources(
-      c.getInt("resources.cpus"),
-      c.getInt("resources.disk"),
-      c.getInt("resources.mem"))
+      c.getDouble("resources.cpus"),
+      c.getDouble("resources.disk"),
+      c.getDouble("resources.mem"))
 
-    MesosFramework(frameworkId, frameworkName, tasks, resources, active)
+    val usedResources = Resources(
+      c.getDouble("used_resources.cpus"),
+      c.getDouble("used_resources.disk"),
+      c.getDouble("used_resources.mem"))
+
+    MesosFramework(frameworkId, frameworkName, tasks, resources, usedResources, active)
   }
 }
 
