@@ -45,7 +45,7 @@ object ClusterModeRunner {
       val sparkSubmitJobDesc = Seq(s"${sparkHome}/bin/spark-submit",
         "--class com.typesafe.spark.test.mesos.framework.runners.SparkJobRunner",
         s"--master $dispatcherUrl",
-        s"--driver-memory 512mb",
+        s"--driver-memory 512m",
         s"--deploy-mode cluster")
 
       submitSparkJob(clientMode = false, sparkSubmitJobDesc.mkString(" "),
