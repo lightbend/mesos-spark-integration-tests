@@ -34,6 +34,8 @@ MESOS_SLAVE_CONFIG=
 HADOOP_FILE=hadoop-$HADOOP_VERSION_FOR_SPARK.0.tar.gz
 RESOURCE_THRESHOLD=1.0
 SLAVES_CONFIG_FILE=
+INSTALL_ZK=
+INSTALL_MARATHON=
 
 MEM_TH=$RESOURCE_THRESHOLD
 CPU_TH=$RESOURCE_THRESHOLD
@@ -91,6 +93,10 @@ function generate_application_conf_file {
   sed -i -- "s@replace_with_docker_host_ip@$host_ip@g" "$target_location/mit-application.conf"
   sed -i -- "s@replace_with_spark_executor_uri@$spark_tgz_file@g" "$target_location/mit-application.conf"
 
+  if [[ -n $INSTALL_ZK ]];then
+    echo "spark.zk.uri = \"zk://$(docker_ip):2181\""  | tee -a "$target_location/mit-application.conf"
+  fi
+
   #remove any temp file generated (on OS X)
   rm -f "$target_location/mit-application.conf--"
 
@@ -146,12 +152,16 @@ function check_mesos_version {
 function start_master {
 
   #pull latest image to get any changes (the image is common between master nad slave so we
-  #need this once). 
+  #need this once).
   docker pull $DOCKER_USER/$MASTER_IMAGE
 
   dip=$(docker_ip)
 
-  start_master_command="/usr/sbin/mesos-master --ip=$dip $(quote_if_non_empty $MESOS_MASTER_CONFIG)"
+  if [[ -n $INSTALL_ZK ]]; then
+    zk="--zk=zk://$dip:2181/mesos"
+  fi
+
+  start_master_command="/usr/sbin/mesos-master $zk --ip=$dip $(quote_if_non_empty $MESOS_MASTER_CONFIG)"
 
   upmesos="apt-get update -o Dir::Etc::sourcelist=sources.list.d/mesosphere.list -o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0"
   start_master_command="$upmesos ; apt-get install --only-upgrade mesos; $start_master_command"
@@ -188,6 +198,18 @@ function start_master {
   check_if_service_is_running mesos-master 5050
 
   check_mesos_version $MASTER_CONTAINER_NAME
+
+  if [[ -n $INSTALL_ZK ]]; then
+    docker exec $MASTER_CONTAINER_NAME /bin/bash -c "service zookeeper start"
+    check_if_service_is_running zk 2181
+  fi
+
+  if [[ -n $INSTALL_MARATHON ]]; then
+    docker exec $MASTER_CONTAINER_NAME mkdir -p /etc/marathon/conf
+    docker exec $MASTER_CONTAINER_NAME /bin/bash -c "echo \"zk://localhost:2181/marathon\" | tee /etc/marathon/conf/zk"
+    docker exec $MASTER_CONTAINER_NAME /bin/bash -c "echo \"zk://localhost:2181/mesos\" | tee /etc/marathon/conf/master"
+    docker exec $MASTER_CONTAINER_NAME /bin/bash -c "service marathon start"
+  fi
 
   if [[ -n $INSTALL_HDFS ]]; then
     docker exec $MASTER_CONTAINER_NAME /bin/bash /var/hadoop/hadoop_setup.sh
@@ -254,10 +276,16 @@ function start_slaves {
 
   dip=$(docker_ip)
 
+  if [[ -n $INSTALL_ZK ]]; then
+    master="zk://$dip:2181/mesos"
+  else
+    master="$dip:5050"
+  fi
+
   number_of_ports=3
   for i in `seq 1 $NUMBER_OF_SLAVES`;
   do
-    start_slave_command="/usr/sbin/mesos-slave --master=$dip:5050 --ip=$dip $(quote_if_non_empty $MESOS_SLAVE_CONFIG)"
+    start_slave_command="/usr/sbin/mesos-slave --master=$master --ip=$dip $(quote_if_non_empty $MESOS_SLAVE_CONFIG)"
 
     upmesos="apt-get update -o Dir::Etc::sourcelist=sources.list.d/mesosphere.list -o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0"
     start_slave_command="$upmesos ; apt-get install --only-upgrade mesos; $start_slave_command"
@@ -430,6 +458,8 @@ function show_help {
   --hadoop-binary-file  the hadoop binary file to use in docker configuration (optional, if not present tries to download the image).
   --spark-binary-file  the hadoop binary file to use in docker configuration (optional, if not present tries to download the image).
   --image-version  the image version to use for the containers (optional, defaults to the latest hardcoded value).
+  --with-zk sets master as a zookeeper node.
+  --with-mararthon starts marathon node requires zookeeper.
   --no-hdfs to ignore hdfs installation step
   --mem-th the percentage of the host cpus to use for slaves. Default: 0.5.
   --cpu-th the percentage of the host memory to use for slaves. Default: 0.5.
@@ -507,8 +537,18 @@ function parse_args {
         exitWithMsg '"cpu_th" requires a non-empty option argument.\n'
       fi
       ;;
-      --no-hdfs)       # Takes an option argument, ensuring it has been specified.
+      --no-hdfs)
       INSTALL_HDFS=
+      shift 1
+      continue
+      ;;
+      --with-zk)
+      INSTALL_ZK="TRUE"
+      shift 1
+      continue
+      ;;
+      --with-marathon)
+      INSTALL_MARATHON="TRUE"
       shift 1
       continue
       ;;
@@ -556,6 +596,10 @@ function parse_args {
 
   if [[ -n $HADOOP_BINARY_PATH && -z $INSTALL_HDFS ]]; then
     exitWithMsg "Don't specify no-hdfs flag, --hadoop-binary-path is only used when hdfs is used which is default"
+  fi
+
+  if [[ -z $INSTALL_ZK && -n $INSTALL_MARATHON ]]; then
+    exitWithMsg "Marathon needs zookeeper. Use --with-zk flag to enable it."
   fi
 
   if [[ -n $SLAVES_CONFIG_FILE ]]; then
