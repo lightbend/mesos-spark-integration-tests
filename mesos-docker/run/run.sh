@@ -27,6 +27,7 @@ HADOOP_BINARY_PATH=
 SPARK_VERSION=1.5.1
 HADOOP_VERSION_FOR_SPARK=2.6
 INSTALL_HDFS=1
+START_SHUFFLE_SERVICE=1
 IS_QUIET=
 SPARK_FILE=spark-$SPARK_VERSION-bin-hadoop$HADOOP_VERSION_FOR_SPARK.tgz
 MESOS_MASTER_CONFIG=
@@ -37,6 +38,8 @@ SLAVES_CONFIG_FILE=
 
 MEM_TH=$RESOURCE_THRESHOLD
 CPU_TH=$RESOURCE_THRESHOLD
+
+SPARK_CONF_FOLDER="/etc/spark/conf"
 
 # Make sure we know the name of the docker machine. Fail fast if we don't
 if [[ ("$(uname)" == "Darwin") && (-z $DOCKER_MACHINE_NAME) ]]; then
@@ -315,6 +318,7 @@ function start_slaves {
     -e "IT_DFS_DATANODE_ADDRESS_PORT=$((50100 + $(($i -1))*$number_of_ports + 1 ))" \
     -e "IT_DFS_DATANODE_HTTP_ADDRESS_PORT=$((50100 + $(($i -1))*$number_of_ports + 2))" \
     -e "IT_DFS_DATANODE_IPC_ADDRESS_PORT=$((50100 + $(($i -1))*$number_of_ports + 3))" \
+    -e "SPARK_CONF_DIR=$SPARK_CONF_FOLDER" \
     -e "DOCKER_IP=$dip" \
     -e "USER=root" \
     -d \
@@ -335,6 +339,14 @@ function start_slaves {
     if [[ -n $INSTALL_HDFS ]]; then
       docker exec "$SLAVE_CONTAINER_NAME"_"$i" /bin/bash /var/hadoop/hadoop_setup.sh SLAVE
       docker exec "$SLAVE_CONTAINER_NAME"_"$i" /usr/local/sbin/hadoop-daemon.sh --script hdfs start datanode
+    fi
+
+    if [[ -n $START_SHUFFLE_SERVICE ]]; then
+      start_shuffle_service_command="/bin/mkdir -p $SPARK_CONF_FOLDER"
+      start_shuffle_service_command="$start_shuffle_service_command; /bin/echo 'spark.shuffle.service.port $((7336 + i))' >> $SPARK_CONF_FOLDER/spark-defaults.conf"
+      start_shuffle_service_command="$start_shuffle_service_command; /bin/tar -C /opt/ -xf /var/spark/$SPARK_FILE"
+      start_shuffle_service_command="$start_shuffle_service_command; /opt/spark*/sbin/start-mesos-shuffle-service.sh"
+      docker exec "$SLAVE_CONTAINER_NAME"_"$i" /bin/bash -c "$start_shuffle_service_command"
     fi
 
   done
@@ -430,7 +442,8 @@ function show_help {
   --hadoop-binary-file  the hadoop binary file to use in docker configuration (optional, if not present tries to download the image).
   --spark-binary-file  the hadoop binary file to use in docker configuration (optional, if not present tries to download the image).
   --image-version  the image version to use for the containers (optional, defaults to the latest hardcoded value).
-  --no-hdfs to ignore hdfs installation step
+  --no-hdfs to ignore hdfs installation step.
+  --no-shuffle-service to not start the external scheduler service.
   --mem-th the percentage of the host cpus to use for slaves. Default: 0.5.
   --cpu-th the percentage of the host memory to use for slaves. Default: 0.5.
   --mesos-master-config parameters passed to the mesos master (specific only and common with slave).
@@ -511,6 +524,11 @@ function parse_args {
       INSTALL_HDFS=
       shift 1
       continue
+      ;;
+      --no-shuffle-service)
+        START_SHUFFLE_SERVICE=
+        shift 1
+        continue
       ;;
       --mesos-master-config)       # Takes an option argument, ensuring it has been specified.
       if [ -n "$2" ]; then

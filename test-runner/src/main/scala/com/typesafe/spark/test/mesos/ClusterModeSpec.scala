@@ -14,7 +14,8 @@ class ClusterModeSpec(
   with SimpleFineGrainSpec
   with SimpleCoarseGrainSpec
   with SparkPropertiesSpec
-  with RolesSpec {
+  with RolesSpec
+  with DynamicAllocationSpec {
 
   import MesosIntTestHelper._
 
