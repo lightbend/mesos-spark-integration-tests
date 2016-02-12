@@ -1,6 +1,6 @@
 package com.typesafe.spark.test.mesos.framework.runners
 
-import java.io.{FileInputStream, File}
+import java.io.{PrintWriter, ByteArrayOutputStream, FileInputStream, File}
 import java.net.{InetAddress, ServerSocket, Socket}
 import java.util.concurrent._
 
@@ -95,7 +95,8 @@ object Utils {
     val cmdStr = cmd.mkString(" ")
     printMsg(s"Running command: ${cmdStr} with env vars: ${env.mkString(" ")}")
     val proc = Process(cmdStr, None, env: _*)
-    proc.lines_!.foreach(line => println(line))
+    val output = proc.lineStream
+    output.foreach(line => println(line))
     printMsg(s"Command completed.")
   }
 
@@ -127,7 +128,8 @@ object Utils {
     val cmdStr = mesosStartDispatcherDesc.mkString(" ")
     printMsg(s"Running command: ${cmdStr} with env vars: ${env.mkString(" ")}")
     val proc = Process(cmdStr, None, env: _*)
-    proc.lines_!.foreach(line => println(line))
+    val output = proc.lineStream
+    output.foreach(line => println(line))
 
     val numOfTries = 30
 

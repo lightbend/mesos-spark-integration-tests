@@ -3,12 +3,12 @@ import sbt.complete.Parsers._
 organization := "com.typesafe.spark"
 name := "mesos-spark-integration-tests"
 version := "0.1.0"
-scalaVersion := "2.10.5"
+scalaVersion := "2.11.7"
 
 scalacOptions ++= Seq("-feature", "-deprecation", "-language:postfixOps")
 
-//default Spark version
-val sparkVersion = "1.5.1"
+// default Spark version
+val sparkVersion = "1.6.0"
 
 val sparkHome = SettingKey[Option[String]]("spark-home", "the value of the variable 'spark.home'")
 
