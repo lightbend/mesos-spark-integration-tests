@@ -10,6 +10,8 @@ isDockerStarted=false
 
 #specified spark binary file
 sparkBinaryFile=$1
+ZK_FLAG=$2
+MARATHON_FLAG=$3
 
 function startDocker {
   echo "Starting up docker..."
@@ -68,15 +70,16 @@ function runTests {
   kill $(ps -ax | awk '/grep/ {next} /MesosClusterDispatcher/ {print $1}')
 
   #start the cluster
-  $SCRIPTPATH/mesos-docker/run/run.sh --spark-binary-file $sparkBinaryFile --mesos-master-config "--roles=spark_role" --mesos-slave-config "--resources=disk(spark_role):10000;cpus(spark_role):1;mem(spark_role):1000;cpus(*):2;mem(*):2000;disk(*):10000"
 
+  $SCRIPTPATH/mesos-docker/run/run.sh --spark-binary-file $sparkBinaryFile --mesos-master-config "--roles=spark_role,*" --mesos-slave-config "--resources=disk(spark_role):10000;cpus(spark_role):1;mem(spark_role):1000;cpus(*):2;mem(*):2000;disk(*):10000" "$ZK_FLAG" "$MARATHON_FLAG"
+  
   echo "Running tests with following properties:"
   echo "spark home = $sparkHome"
   echo "Mesos url = mesos://$(docker_ip):5050"
 
   #run the tests
   cd $SCRIPTPATH/test-runner
-  sbt -Dspark.home="$sparkHome" -Dconfig.file="./mit-application.conf" "mit $sparkHome mesos://$(docker_ip):5050"
+  sbt  -Dspark.home="$sparkHome" -Dconfig.file="./mit-application.conf" "mit $sparkHome mesos://$(docker_ip):5050"
 
   stopDockerMaybe
 

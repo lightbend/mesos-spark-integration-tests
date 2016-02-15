@@ -34,12 +34,18 @@ object ClusterModeRunner {
     // mesos dispatcher it doesn't die automatically
     killAnyRunningFrameworks(mesosConsoleUrl)
 
+    val masterUrl = {
+      if (config.hasPath("spark.zk.uri")) {
+        "mesos://" + config.getString("spark.zk.uri") + "/mesos"
+      } else {
+        mesosMasterUrl
+      }
+    }
     // start the dispatcher
     val dispatcherUrl = startMesosDispatcher(sparkHome,
       config.getString("spark.executor.uri"),
-      mesosMasterUrl)
+      masterUrl)
     printMsg(s"Mesos dispatcher running at $dispatcherUrl")
-
     val result = runSparkJobAndCollectResult {
       // run spark submit in cluster mode
       val sparkSubmitJobDesc = Seq(s"${sparkHome}/bin/spark-submit",

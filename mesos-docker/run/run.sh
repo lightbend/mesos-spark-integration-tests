@@ -15,7 +15,6 @@ SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
 
 #image tag serves as the version
 IMAGE_VERSION=latest
-
 MASTER_CONTAINER_NAME="spm_master"
 SLAVE_CONTAINER_NAME="spm_slave"
 MASTER_IMAGE="spark_mesos:$IMAGE_VERSION"
@@ -35,9 +34,12 @@ MESOS_SLAVE_CONFIG=
 HADOOP_FILE=hadoop-$HADOOP_VERSION_FOR_SPARK.0.tar.gz
 RESOURCE_THRESHOLD=1.0
 SLAVES_CONFIG_FILE=
+INSTALL_ZK=
+INSTALL_MARATHON=
 MIT_IMAGE_MESOS_VERSION=
 
 MIRROR_SITE=http://mirror.switch.ch
+
 
 MEM_TH=$RESOURCE_THRESHOLD
 CPU_TH=$RESOURCE_THRESHOLD
@@ -101,6 +103,10 @@ function generate_application_conf_file {
   sed -i -- "s@replace_with_hdfs_uri@$hdfs_url@g" "$target_location/mit-application.conf"
   sed -i -- "s@replace_with_docker_host_ip@$host_ip@g" "$target_location/mit-application.conf"
   sed -i -- "s@replace_with_spark_executor_uri@$spark_tgz_file@g" "$target_location/mit-application.conf"
+
+  if [[ -n $INSTALL_ZK ]];then
+    echo "spark.zk.uri = \"zk://$(docker_ip):2181\""  >> "$target_location/mit-application.conf"
+  fi
 
   #remove any temp file generated (on OS X)
   rm -f "$target_location/mit-application.conf--"
@@ -190,9 +196,13 @@ function start_master {
 
   dip=$(docker_ip)
 
-  start_master_command="/usr/sbin/mesos-master --ip=$dip $(quote_if_non_empty $MESOS_MASTER_CONFIG)"
-  start_master_command="$(get_mesos_update_command) ; $start_master_command"
+  if [[ -n $INSTALL_ZK ]]; then
+    zk="--zk=zk://$dip:2181/mesos"
+  fi
 
+  start_master_command="/usr/sbin/mesos-master $zk --ip=$dip $(quote_if_non_empty $MESOS_MASTER_CONFIG)"
+  start_master_command="$(get_mesos_update_command) ; $start_master_command"
+  
   if [[ -n $INSTALL_HDFS ]]; then
     HADOOP_VOLUME="-v $HADOOP_BINARY_PATH:/var/tmp/$HADOOP_FILE"
   else
@@ -223,6 +233,19 @@ function start_master {
   check_if_container_is_up $MASTER_CONTAINER_NAME
   check_if_service_is_running mesos-master 5050
   check_mesos_version $MASTER_CONTAINER_NAME
+
+  if [[ -n $INSTALL_ZK ]]; then
+    docker exec $MASTER_CONTAINER_NAME /bin/bash -c "service zookeeper start"
+    check_if_service_is_running zk 2181
+  fi
+
+  if [[ -n $INSTALL_MARATHON ]]; then
+    docker exec $MASTER_CONTAINER_NAME mkdir -p /etc/marathon/conf
+    docker exec $MASTER_CONTAINER_NAME /bin/bash -c "echo \"zk://localhost:2181/marathon\" | tee /etc/marathon/conf/zk"
+    docker exec $MASTER_CONTAINER_NAME /bin/bash -c "echo \"zk://localhost:2181/mesos\" | tee /etc/marathon/conf/master"
+    docker exec $MASTER_CONTAINER_NAME /bin/bash -c "service marathon start"
+    check_if_service_is_running marathon 8080
+  fi
 
   if [[ -n $INSTALL_HDFS ]]; then
     docker exec $MASTER_CONTAINER_NAME /bin/bash /var/hadoop/hadoop_setup.sh
@@ -295,11 +318,18 @@ function remove_quotes {
 #
 function start_slaves {
   dip=$(docker_ip)
+
+  if [[ -n $INSTALL_ZK ]]; then
+    master="zk://$dip:2181/mesos"
+  else
+    master="$dip:5050"
+  fi
+
   number_of_ports=3
 
   for i in `seq 1 $NUMBER_OF_SLAVES`;
   do
-    start_slave_command="/usr/sbin/mesos-slave --master=$dip:5050 --ip=$dip $(quote_if_non_empty $MESOS_SLAVE_CONFIG)"
+    start_slave_command="/usr/sbin/mesos-slave --master=$master --ip=$dip $(quote_if_non_empty $MESOS_SLAVE_CONFIG)"
     start_slave_command="$(get_mesos_update_command) ; $start_slave_command"
 
     echo "starting slave ...$i"
@@ -385,7 +415,6 @@ function start_slaves {
       start_shuffle_service_command="$start_shuffle_service_command; /opt/spark*/sbin/start-mesos-shuffle-service.sh"
       docker exec "$SLAVE_CONTAINER_NAME"_"$i" /bin/bash -c "$start_shuffle_service_command"
     fi
-
   done
 }
 
@@ -418,20 +447,21 @@ function create_html {
   done
 
   node_info=$(cat <<EOF
-
 <div class="my_item">Total Number of Nodes: $TOTAL_NODES (1 Master, $NUMBER_OF_SLAVES Slave(s))</div>
 <div>Mesos Master: $(docker_ip):5050 </div>
 $HTML_SNIPPET
 <div style="margin-top:1em">The IP of the docker interface on host: $(docker_ip)</div>
 <div class="my_item">$(print_host_ip)</div>
-
 <div class="alert alert-success" role="alert">Your cluster is up and running!</div>
 EOF
 )
   replace_in_htmlfile_multi "$node_info" "REPLACE_NODES" "$SCRIPTPATH/template.html" "$SCRIPTPATH/index.html"
-
   HDFS_SNIPPET_1=
   HDFS_SNIPPET_OUT=
+  MARATHON_SNIPPET=
+  ZK_SNIPPET=
+  MESOS_OUTPUT="$(curl -s http://$(docker_ip):5050/master/state.json | python -m json.tool)"
+
   if [[ -n $INSTALL_HDFS ]]; then
     HDFS_SNIPPET_1="<div class=\"my_item\"><a data-toggle=\"tooltip\" data-placement=\"top\" data-original-title=\"$(docker_ip):50070\" href=\"http://$(docker_ip):50070\">Hadoop UI</a></div>\
     <div>HDFS url: hdfs://$(docker_ip):8020</div>"
@@ -439,11 +469,19 @@ EOF
     <div id=\"hho\" class=\"my_item\"><pre>$(docker exec spm_master hdfs dfsadmin -report)</pre></div>"
   fi
 
-  MESOS_OUTPUT="$(curl -s http://$(docker_ip):5050/master/state.json | python -m json.tool)"
+  if [[ -n  $INSTALL_ZK ]]; then
+    ZK_SNIPPET="<div>Zookeeper uri: zk://$(docker_ip):2181</div>"
+  fi
 
-dash_info=$(cat <<EOF
+  if [[ -n $INSTALL_MARATHON ]]; then
+    MARATHON_SNIPPET="<div> <a data-toggle=\"tooltip\" data-placement=\"top\" data-original-title=\"$(docker_ip):8888\" href=\"http://$(docker_ip):8080\">Marathon UI</a> </div>"
+  fi
+
+  dash_info=$(cat <<EOF
+$MARATHON_SNIPPET
 <div> <a data-toggle="tooltip" data-placement="top" data-original-title="$(docker_ip):5050" href="http://$(docker_ip):5050">Mesos UI</a> </div>
 $HDFS_SNIPPET_1
+$ZK_SNIPPET
 <div>Spark Uri: /var/spark/${SPARK_FILE} </div>
 <div class="my_item">Spark master: mesos://$(docker_ip):5050</div>
 
@@ -487,6 +525,9 @@ function show_help {
   --hadoop-binary-file  the hadoop binary file to use in docker configuration (optional, if not present tries to download the image).
   --spark-binary-file  the hadoop binary file to use in docker configuration (optional, if not present tries to download the image).
   --image-version  the image version to use for the containers (optional, defaults to the latest hardcoded value).
+  --with-zk sets master as a zookeeper node.
+  --with-mararthon starts marathon node requires zookeeper.
+  --no-hdfs to ignore hdfs installation step
   --no-hdfs to ignore hdfs installation step.
   --no-shuffle-service to not start the external scheduler service.
   --update-image-mesos-at-version update the mesos on docker image with a specific version
@@ -567,8 +608,18 @@ function parse_args {
         exitWithMsg '"cpu_th" requires a non-empty option argument.\n'
       fi
       ;;
-      --no-hdfs)       # Takes an option argument, ensuring it has been specified.
+      --no-hdfs)
       INSTALL_HDFS=
+      shift 1
+      continue
+      ;;
+      --with-zk)
+      INSTALL_ZK="TRUE"
+      shift 1
+      continue
+      ;;
+      --with-marathon)
+      INSTALL_MARATHON="TRUE"
       shift 1
       continue
       ;;
@@ -632,6 +683,10 @@ function parse_args {
     exitWithMsg "Don't specify no-hdfs flag, --hadoop-binary-path is only used when hdfs is used which is default"
   fi
 
+  if [[ -z $INSTALL_ZK && -n $INSTALL_MARATHON ]]; then
+    exitWithMsg "Marathon needs zookeeper. Use --with-zk flag to enable it."
+  fi
+
   if [[ -n $SLAVES_CONFIG_FILE ]]; then
     if [[ -f $SLAVES_CONFIG_FILE ]]; then
       . cfg.sh
@@ -670,11 +725,8 @@ function printMsg {
 
 function main {
   parse_args "$@"
-
   cat $SCRIPTPATH/message.txt
-
   echo -e "\n"
-
   type docker >/dev/null 2>&1 || { echo >&2 "docker binary is required but it's not installed.  Aborting."; exit 1; }
 
   printMsg "Setting folders..."
@@ -702,6 +754,14 @@ function main {
     printMsg "Hdfs cluster started!"
     printMsg "Hdfs cluster dashboard url http://$(docker_ip):50070"
     printMsg "Hdfs url hdfs://$(docker_ip):8020"
+  fi
+
+  if [[ -n  $INSTALL_ZK ]]; then
+    printMsg "Zookeeper url zk://$(docker_ip):2181"
+  fi
+
+  if [[ -n $INSTALL_MARATHON ]]; then
+    printMsg "Marathon url http://$(docker_ip):8080"
   fi
 
   generate_application_conf_file
