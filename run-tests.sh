@@ -53,7 +53,7 @@ function runTests {
   #extract the spark binary file. The scripts will be used by the test runner
   #creating a temporary home for the spark files. Will be removed at the end
   tempSparkFolder=$(mktemp -d "$HOME/mit.XXX")
-  tar -xvf $sparkBinaryFile -C $tempSparkFolder
+  tar -xf $sparkBinaryFile -C $tempSparkFolder
   sparkHome=$tempSparkFolder/$(extractHomeFromSparkFile)
 
   #only start the docker machine for mac
@@ -70,8 +70,9 @@ function runTests {
   kill $(ps -ax | awk '/grep/ {next} /MesosClusterDispatcher/ {print $1}')
 
   #start the cluster
-  $SCRIPTPATH/mesos-docker/run/run.sh --spark-binary-file $sparkBinaryFile --mesos-master-config "--roles=spark_role,*" --mesos-slave-config "--resources=disk(spark_role):10000;cpus(spark_role):1;mem(spark_role):1000;cpus(*):2;mem(*):2000;disk(*):10000" "$ZK_FLAG" "$MARATHON_FLAG"
 
+  $SCRIPTPATH/mesos-docker/run/run.sh --spark-binary-file $sparkBinaryFile --mesos-master-config "--roles=spark_role,*" --mesos-slave-config "--resources=disk(spark_role):10000;cpus(spark_role):1;mem(spark_role):1000;cpus(*):2;mem(*):2000;disk(*):10000" "$ZK_FLAG" "$MARATHON_FLAG"
+  
   echo "Running tests with following properties:"
   echo "spark home = $sparkHome"
   echo "Mesos url = mesos://$(docker_ip):5050"
