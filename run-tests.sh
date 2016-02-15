@@ -12,9 +12,9 @@ isDockerStarted=false
 sparkBinaryFile=$1
 
 function startDocker {
-  echo "Starting up docker..."  
+  echo "Starting up docker..."
   docker-machine start default
-  isDockerStarted=true  
+  isDockerStarted=true
 }
 
 #start the docker-machine if not running
@@ -28,7 +28,7 @@ function startDockerMaybe {
 #stop the docker if started by the script
 function stopDockerMaybe {
   if $isDockerStarted; then
-    echo "Stopping docker..." 
+    echo "Stopping docker..."
     docker-machine stop default
   fi
 }
@@ -43,7 +43,7 @@ function docker_ip {
 
 function extractHomeFromSparkFile {
   bname=$(basename $sparkBinaryFile)
-  echo ${bname%.*} #remove the file extension 
+  echo ${bname%.*} #remove the file extension
 }
 
 
@@ -51,15 +51,15 @@ function runTests {
   #extract the spark binary file. The scripts will be used by the test runner
   #creating a temporary home for the spark files. Will be removed at the end
   tempSparkFolder=$(mktemp -d "$HOME/mit.XXX")
-  tar -xvf $sparkBinaryFile -C $tempSparkFolder
+  tar -xf $sparkBinaryFile -C $tempSparkFolder
   sparkHome=$tempSparkFolder/$(extractHomeFromSparkFile)
 
   #only start the docker machine for mac
   #TODO: do the same for ubuntu
   if [[ "$(uname)" == "Darwin" ]]; then
-    startDockerMaybe  
+    startDockerMaybe
     eval "$(docker-machine env default)"
-  fi  
+  fi
 
   #shutdown any running cluster
   $SCRIPTPATH/mesos-docker/run/cluster_remove.sh
@@ -67,11 +67,11 @@ function runTests {
   #stop any zombie dispatcher ?
   kill $(ps -ax | awk '/grep/ {next} /MesosClusterDispatcher/ {print $1}')
 
-  #start the cluster 
+  #start the cluster
   $SCRIPTPATH/mesos-docker/run/run.sh --spark-binary-file $sparkBinaryFile --mesos-master-config "--roles=spark_role" --mesos-slave-config "--resources=disk(spark_role):10000;cpus(spark_role):1;mem(spark_role):1000;cpus(*):2;mem(*):2000;disk(*):10000"
 
   echo "Running tests with following properties:"
-  echo "spark home = $sparkHome" 
+  echo "spark home = $sparkHome"
   echo "Mesos url = mesos://$(docker_ip):5050"
 
   #run the tests
@@ -81,7 +81,7 @@ function runTests {
   stopDockerMaybe
 
   # cleanup the temp spark folder
-  rm -rf $tempSparkFolder    
+  rm -rf $tempSparkFolder
 }
 
 runTests
