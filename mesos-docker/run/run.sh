@@ -202,11 +202,7 @@ function start_master {
 
   start_master_command="/usr/sbin/mesos-master $zk --ip=$dip $(quote_if_non_empty $MESOS_MASTER_CONFIG)"
   start_master_command="$(get_mesos_update_command) ; $start_master_command"
-
-
-  #upmesos="apt-get update -o Dir::Etc::sourcelist=sources.list.d/mesosphere.list -o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0"
-  #start_master_command="$upmesos ; apt-get install --only-upgrade mesos; $start_master_command"
-  upmesos="$start_master_command"
+  
   if [[ -n $INSTALL_HDFS ]]; then
     HADOOP_VOLUME="-v $HADOOP_BINARY_PATH:/var/tmp/$HADOOP_FILE"
   else
@@ -336,9 +332,6 @@ function start_slaves {
     start_slave_command="/usr/sbin/mesos-slave --master=$master --ip=$dip $(quote_if_non_empty $MESOS_SLAVE_CONFIG)"
     start_slave_command="$(get_mesos_update_command) ; $start_slave_command"
 
-    #upmesos="apt-get update -o Dir::Etc::sourcelist=sources.list.d/mesosphere.list -o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0"
-    #start_slave_command="$upmesos ; apt-get install --only-upgrade mesos; $start_slave_command"
-    upmesos="$start_slave_command"
     echo "starting slave ...$i"
     cpus=$(calcf $(($(get_cpus)/$NUMBER_OF_SLAVES))*$CPU_TH)
     mem=$(calcf $(($(get_mem)/$NUMBER_OF_SLAVES))*$MEM_TH)
