@@ -1,6 +1,7 @@
 package com.typesafe.spark.test.mesos.mesosstate
 
 import com.typesafe.config.Config
+import com.typesafe.config.ConfigObject
 import com.typesafe.config.ConfigFactory
 import java.net.URL
 import java.io.InputStreamReader
@@ -14,12 +15,13 @@ object MesosState extends Enumeration {
 
 import MesosState._
 
-
 case class MesosCluster(frameworks: List[MesosFramework], slaves: List[MesosSlave]) {
+
+  val numberOfSlaves: Int = slaves.size
+
   def sparkFramework: Option[MesosFramework] =
     frameworks.find(f => f.active && f.name.startsWith(MesosIntTestHelper.SPARK_FRAMEWORK_PREFIX))
 }
-
 
 object MesosCluster {
   def apply(c: Config): MesosCluster = {
@@ -43,45 +45,9 @@ object MesosCluster {
 case class Resources(cpu: Double, disk: Double, mem: Double)
 case class ReservedResourcesPerRole(roleName: String, resources: Resources)
 
-case class MesosFramework (frameworkId: String, name: String, tasks: List[MesosTask], resources: Resources,
-                           usedResources : Resources, active: Boolean)
-case class MesosSlave(
-    slaveId: String,
-    resources: Resources,
-    unreservedResources: Resources,
-    usedResources: Resources,
-    roleResources: List[ReservedResourcesPerRole])
-
-object MesosSlave {
-
-  def apply(c: Config): MesosSlave = {
-    val slaveId = c.getString("id")
-    import collection.JavaConverters._
-    val reserved = c.getObject("reserved_resources").unwrapped().asScala.
-      map { x =>
-        val res = Resources(c.getInt(s"reserved_resources.${x._1}.cpus"),
-          c.getDouble(s"reserved_resources.${x._1}.mem"),
-          c.getDouble(s"reserved_resources.${x._1}.disk"))
-        ReservedResourcesPerRole(x._1, res)
-      } .toList
-
-    val resources = Resources(
-      c.getDouble("resources.cpus"),
-      c.getDouble("resources.disk"),
-      c.getDouble("resources.mem"))
-
-    val used = Resources(
-      c.getDouble("used_resources.cpus"),
-      c.getDouble("resources.disk"),
-      c.getInt("resources.mem"))
-
-    val unreserved = Resources(
-      c.getDouble("unreserved_resources.cpus"),
-      c.getDouble("resources.disk"),
-      c.getDouble("resources.mem"))
-
-    MesosSlave(slaveId, resources, unreserved, used, reserved)
-  }
+case class MesosFramework(frameworkId: String, name: String, tasks: List[MesosTask], resources: Resources, active: Boolean) {
+  lazy val nbRunningTasks: Int =
+    tasks.filter { _.state == MesosState.TASK_RUNNING }.size
 }
 
 object MesosFramework {
@@ -98,18 +64,57 @@ object MesosFramework {
       c.getDouble("resources.disk"),
       c.getDouble("resources.mem"))
 
-    val usedResources = Resources(
-      c.getDouble("used_resources.cpus"),
-      c.getDouble("used_resources.disk"),
-      c.getDouble("used_resources.mem"))
-
-    MesosFramework(frameworkId, frameworkName, tasks, resources, usedResources, active)
+    MesosFramework(frameworkId, frameworkName, tasks, resources, active)
   }
 }
 
+case class MesosSlave(
+  slaveId: String,
+  resources: Resources,
+  unreservedResources: Resources,
+  usedResources: Resources,
+  roleResources: List[ReservedResourcesPerRole])
+
+object MesosSlave {
+
+  def apply(c: Config): MesosSlave = {
+    val slaveId = c.getString("id")
+    import collection.JavaConverters._
+
+    val reserved = c.getObject("reserved_resources").asScala.
+      map {
+        case (role, configObject: ConfigObject) =>
+          val config = configObject.toConfig()
+          val res = Resources(config.getInt("cpus"),
+            config.getInt("mem"),
+            config.getInt("disk"))
+          ReservedResourcesPerRole(role, res)
+      }.toList
+
+
+    val resources = Resources(
+      c.getDouble("resources.cpus"),
+      c.getDouble("resources.disk"),
+      c.getDouble("resources.mem"))
+
+    val used = Resources(
+      c.getDouble("used_resources.cpus"),
+      c.getDouble("used_resources.disk"),
+      c.getInt("used_resources.mem"))
+
+    val unreserved = Resources(
+      c.getDouble("unreserved_resources.cpus"),
+      c.getDouble("unreserved.resources.disk"),
+      c.getDouble("unreserved.resources.mem"))
+
+    MesosSlave(slaveId, resources, unreserved, used, reserved)
+  }
+}
+
+
 case class MesosTask (state: MesosState)
 
-object MesosTask{
+object MesosTask {
   def apply(c: Config): MesosTask = {
     val state = c.getString("state")
     MesosTask(MesosState.withName(state))
@@ -125,5 +130,4 @@ object StateDump {
 
     println(cluster)
   }
-
 }

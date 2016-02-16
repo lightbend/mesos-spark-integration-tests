@@ -25,11 +25,18 @@ object ClientModeRunner {
     // this file is in `src/main/resources`, but ends up in root on the classpath
     val logFileConfig = "-Dlog4j.configuration=mit-log4j.properties"
 
+    val submitMasterUrl = {
+      if (config.hasPath("spark.zk.uri")) {
+        "mesos://" + config.getString("spark.zk.uri") + "/mesos"
+      } else {
+        mesosMasterUrl
+      }
+    }
     runSparkJobAndCollectResult {
       val sparkSubmitJobDesc = ArrayBuffer(
         s"${sparkHome}/bin/spark-submit",
         "--class com.typesafe.spark.test.mesos.framework.runners.SparkJobRunner",
-        s"--master $mesosMasterUrl",
+        s"--master $submitMasterUrl",
         "--deploy-mode client",
         s"""--driver-java-options "$logFileConfig"""",
         s"""--conf spark.executor.extraJavaOptions="$logFileConfig""""

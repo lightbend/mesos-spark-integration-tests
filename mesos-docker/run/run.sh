@@ -15,7 +15,6 @@ SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
 
 #image tag serves as the version
 IMAGE_VERSION=latest
-
 MASTER_CONTAINER_NAME="spm_master"
 SLAVE_CONTAINER_NAME="spm_slave"
 MASTER_IMAGE="spark_mesos:$IMAGE_VERSION"
@@ -24,19 +23,28 @@ DOCKER_USER="skonto"
 NUMBER_OF_SLAVES=2
 SPARK_BINARY_PATH=
 HADOOP_BINARY_PATH=
-SPARK_VERSION=1.5.1
+SPARK_VERSION=
 HADOOP_VERSION_FOR_SPARK=2.6
 INSTALL_HDFS=1
+START_SHUFFLE_SERVICE=1
 IS_QUIET=
-SPARK_FILE=spark-$SPARK_VERSION-bin-hadoop$HADOOP_VERSION_FOR_SPARK.tgz
+SPARK_FILE=
 MESOS_MASTER_CONFIG=
 MESOS_SLAVE_CONFIG=
 HADOOP_FILE=hadoop-$HADOOP_VERSION_FOR_SPARK.0.tar.gz
 RESOURCE_THRESHOLD=1.0
 SLAVES_CONFIG_FILE=
+INSTALL_ZK=
+INSTALL_MARATHON=
+MIT_IMAGE_MESOS_VERSION=
+
+MIRROR_SITE=http://mirror.switch.ch
+
 
 MEM_TH=$RESOURCE_THRESHOLD
 CPU_TH=$RESOURCE_THRESHOLD
+
+SPARK_CONF_FOLDER="/etc/spark/conf"
 
 # Make sure we know the name of the docker machine. Fail fast if we don't
 if [[ ("$(uname)" == "Darwin") && (-z $DOCKER_MACHINE_NAME) ]]; then
@@ -44,8 +52,13 @@ if [[ ("$(uname)" == "Darwin") && (-z $DOCKER_MACHINE_NAME) ]]; then
   exit 1
 fi
 
-
 ################################ FUNCTIONS #####################################
+
+function get_latest_spark_version {
+  echo "$(wget -qO- $MIRROR_SITE/mirror/apache/dist/spark/ | \
+  grep -oP "spark-[0-9].[0-9].[0-9]" | uniq | sort | tail -n1 | sed 's/spark-//g')"
+}
+
 function docker_ip {
   if [[ "$(uname)" == "Darwin" ]]; then
     docker-machine ip default
@@ -91,6 +104,10 @@ function generate_application_conf_file {
   sed -i -- "s@replace_with_docker_host_ip@$host_ip@g" "$target_location/mit-application.conf"
   sed -i -- "s@replace_with_spark_executor_uri@$spark_tgz_file@g" "$target_location/mit-application.conf"
 
+  if [[ -n $INSTALL_ZK ]];then
+    echo "spark.zk.uri = \"zk://$(docker_ip):2181\""  >> "$target_location/mit-application.conf"
+  fi
+
   #remove any temp file generated (on OS X)
   rm -f "$target_location/mit-application.conf--"
 
@@ -100,7 +117,6 @@ function generate_application_conf_file {
 }
 
 function check_if_service_is_running {
-
   COUNTER=0
   while ! nc -z $dip $2; do
     echo -ne "waiting for $1 at port $2...$COUNTER\r"
@@ -110,7 +126,6 @@ function check_if_service_is_running {
 }
 
 function check_if_container_is_up {
-
   printMsg "Checking if container $1 is up..."
   #wait to avoid temporary running window...
   sleep 1
@@ -122,40 +137,72 @@ function check_if_container_is_up {
 }
 
 function quote_if_non_empty {
-
   if [[ -n $1 ]];then
     echo "\"$@\""
   else
     echo ""
   fi
-
 }
 
+#
+# Compares mesos version on host vs on docker images used.
+# If different warn the user.
+#
 function check_mesos_version {
-
-  MIT_MESOS_HOST_VERSION=$(dpkg -s mesos | grep Version | awk '{print $2}')
-  MIT_MESOS_LIB_DOCKER_VERSION=$(docker exec $1 sh -c "dpkg -s mesos | grep Version" |  awk '{print $2}')\
+  local MIT_MESOS_HOST_VERSION=$(dpkg -s mesos | grep Version | awk '{print $2}')
+  local MIT_MESOS_LIB_DOCKER_VERSION=$(docker exec $1 sh -c "dpkg -s mesos | grep Version" |  awk '{print $2}')\
 
   if [[ ! "$MIT_MESOS_HOST_VERSION" == "$MIT_MESOS_LIB_DOCKER_VERSION" ]]; then
     printMsg "WARN: Host and Docker images have different versions, Host:$MIT_MESOS_HOST_VERSION, Image: $MIT_MESOS_LIB_DOCKER_VERSION (image always reflects the latest version). Pls upgrade host."
   fi
 }
 
+#
+# Returns a string of the command to upgrade or downgrade a package to a specific version
+# $1 the name of the package eg. mesos
+# $2 the version to upgrade or downgrade to
+#
+function update_package_str {
+  local RET="$(apt-cache policy $1 | sed -n -e '/Version table:/,$p' | sed 's/\*\*\*//g' | grep "$2" | awk {'print $1'} | head -1)"
+  RET="apt-get -qq --yes --force-yes install $1=$RET"
+  echo $RET
+}
 
-#start master
+#
+# Returns a string of the command to upgrade or downgrade mesos from its repository
+#
+function get_mesos_update_command {
+  com="apt-get update -o Dir::Etc::sourcelist=sources.list.d/mesosphere.list -o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0"
+
+  if [[ -n $MIT_IMAGE_MESOS_VERSION ]];  then
+      com="$com; $(update_package_str "mesos" "$MIT_IMAGE_MESOS_VERSION")"
+  else
+    if [[ -n $MIT_DOCKER_MESOS_VERSION ]]; then
+      com="$com; $(update_package_str "mesos" "$MIT_DOCKER_MESOS_VERSION")"
+    else
+      com="$com; apt-get -qq --yes --force-yes install --only-upgrade mesos"
+    fi
+  fi
+  echo $com
+}
+
+#
+# Starts the mesos master.
+#
 function start_master {
-
   #pull latest image to get any changes (the image is common between master nad slave so we
-  #need this once). 
+  #need this once).
   docker pull $DOCKER_USER/$MASTER_IMAGE
 
   dip=$(docker_ip)
 
-  start_master_command="/usr/sbin/mesos-master --ip=$dip $(quote_if_non_empty $MESOS_MASTER_CONFIG)"
+  if [[ -n $INSTALL_ZK ]]; then
+    zk="--zk=zk://$dip:2181/mesos"
+  fi
 
-  upmesos="apt-get update -o Dir::Etc::sourcelist=sources.list.d/mesosphere.list -o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0"
-  start_master_command="$upmesos ; apt-get install --only-upgrade mesos; $start_master_command"
-
+  start_master_command="/usr/sbin/mesos-master $zk --ip=$dip $(quote_if_non_empty $MESOS_MASTER_CONFIG)"
+  start_master_command="$(get_mesos_update_command) ; $start_master_command"
+  
   if [[ -n $INSTALL_HDFS ]]; then
     HADOOP_VOLUME="-v $HADOOP_BINARY_PATH:/var/tmp/$HADOOP_FILE"
   else
@@ -184,10 +231,21 @@ function start_master {
   $DOCKER_USER/$MASTER_IMAGE /bin/bash -c "$start_master_command"
 
   check_if_container_is_up $MASTER_CONTAINER_NAME
-
   check_if_service_is_running mesos-master 5050
-
   check_mesos_version $MASTER_CONTAINER_NAME
+
+  if [[ -n $INSTALL_ZK ]]; then
+    docker exec $MASTER_CONTAINER_NAME /bin/bash -c "service zookeeper start"
+    check_if_service_is_running zk 2181
+  fi
+
+  if [[ -n $INSTALL_MARATHON ]]; then
+    docker exec $MASTER_CONTAINER_NAME mkdir -p /etc/marathon/conf
+    docker exec $MASTER_CONTAINER_NAME /bin/bash -c "echo \"zk://localhost:2181/marathon\" | tee /etc/marathon/conf/zk"
+    docker exec $MASTER_CONTAINER_NAME /bin/bash -c "echo \"zk://localhost:2181/mesos\" | tee /etc/marathon/conf/master"
+    docker exec $MASTER_CONTAINER_NAME /bin/bash -c "service marathon start"
+    check_if_service_is_running marathon 8080
+  fi
 
   if [[ -n $INSTALL_HDFS ]]; then
     docker exec $MASTER_CONTAINER_NAME /bin/bash /var/hadoop/hadoop_setup.sh
@@ -197,13 +255,21 @@ function start_master {
   fi
 }
 
-
+#
+# Checks if hadoop or spark binary distributions are specified.
+# If not it downloads the latest binaries.
+#
 function get_binaries {
+  SPARK_VERSION="$(get_latest_spark_version)"
+
+  if [[ -z $SPARK_FILE ]]; then
+    SPARK_FILE="spark-$SPARK_VERSION-bin-hadoop$HADOOP_VERSION_FOR_SPARK.tgz"
+  fi
 
   if [[ -z "${SPARK_BINARY_PATH}" ]]; then
     SPARK_BINARY_PATH=$SCRIPTPATH/binaries/$SPARK_FILE
     if [ ! -f "$SPARK_BINARY_PATH" ]; then
-      wget -P $SCRIPTPATH/binaries/ "http://mirror.switch.ch/mirror/apache/dist/spark/spark-$SPARK_VERSION/$SPARK_FILE"
+      wget -P $SCRIPTPATH/binaries/ "$MIRROR_SITE/mirror/apache/dist/spark/spark-$SPARK_VERSION/$SPARK_FILE"
     fi
   fi
 
@@ -212,7 +278,7 @@ function get_binaries {
       HADOOP_BINARY_PATH=$SCRIPTPATH/binaries/$HADOOP_FILE
       if [ ! -f "$HADOOP_BINARY_PATH" ]; then
         TMP_FILE_PATH="hadoop-$HADOOP_VERSION_FOR_SPARK.0/hadoop-$HADOOP_VERSION_FOR_SPARK.0.tar.gz"
-        wget -P $SCRIPTPATH/binaries/ "http://mirror.switch.ch/mirror/apache/dist/hadoop/common/$TMP_FILE_PATH"
+        wget -P $SCRIPTPATH/binaries/ "$MIRROR_SITE/mirror/apache/dist/hadoop/common/$TMP_FILE_PATH"
       fi
     fi
   fi
@@ -231,7 +297,6 @@ function get_cpus {
 }
 
 function get_mem {
-
   #in Mbs
   if [[ "$(uname)" == "Darwin"  ]]; then
     m=`docker-machine inspect $DOCKER_MACHINE_NAME | awk  '/Memory/ {print substr($2, 0, length($2) - 1); exit}'`
@@ -242,25 +307,30 @@ function get_mem {
   fi
 }
 
-
 function remove_quotes {
   echo "$1" | tr -d '"'
 }
 
-#libapparmor is needed
-#https://github.com/RayRutjes/simple-gitlab-runner/pull/1
-
+#
+# Starts the mesos slaves.
+# Note: #libapparmor is needed
+#       https://github.com/RayRutjes/simple-gitlab-runner/pull/1
+#
 function start_slaves {
-
   dip=$(docker_ip)
 
+  if [[ -n $INSTALL_ZK ]]; then
+    master="zk://$dip:2181/mesos"
+  else
+    master="$dip:5050"
+  fi
+
   number_of_ports=3
+
   for i in `seq 1 $NUMBER_OF_SLAVES`;
   do
-    start_slave_command="/usr/sbin/mesos-slave --master=$dip:5050 --ip=$dip $(quote_if_non_empty $MESOS_SLAVE_CONFIG)"
-
-    upmesos="apt-get update -o Dir::Etc::sourcelist=sources.list.d/mesosphere.list -o Dir::Etc::sourceparts=- -o APT::Get::List-Cleanup=0"
-    start_slave_command="$upmesos ; apt-get install --only-upgrade mesos; $start_slave_command"
+    start_slave_command="/usr/sbin/mesos-slave --master=$master --ip=$dip $(quote_if_non_empty $MESOS_SLAVE_CONFIG)"
+    start_slave_command="$(get_mesos_update_command) ; $start_slave_command"
 
     echo "starting slave ...$i"
     cpus=$(calcf $(($(get_cpus)/$NUMBER_OF_SLAVES))*$CPU_TH)
@@ -315,6 +385,7 @@ function start_slaves {
     -e "IT_DFS_DATANODE_ADDRESS_PORT=$((50100 + $(($i -1))*$number_of_ports + 1 ))" \
     -e "IT_DFS_DATANODE_HTTP_ADDRESS_PORT=$((50100 + $(($i -1))*$number_of_ports + 2))" \
     -e "IT_DFS_DATANODE_IPC_ADDRESS_PORT=$((50100 + $(($i -1))*$number_of_ports + 3))" \
+    -e "SPARK_CONF_DIR=$SPARK_CONF_FOLDER" \
     -e "DOCKER_IP=$dip" \
     -e "USER=root" \
     -d \
@@ -337,10 +408,23 @@ function start_slaves {
       docker exec "$SLAVE_CONTAINER_NAME"_"$i" /usr/local/sbin/hadoop-daemon.sh --script hdfs start datanode
     fi
 
+    if [[ -n $START_SHUFFLE_SERVICE ]]; then
+      start_shuffle_service_command="/bin/mkdir -p $SPARK_CONF_FOLDER"
+      start_shuffle_service_command="$start_shuffle_service_command; /bin/echo 'spark.shuffle.service.port $((7336 + i))' >> $SPARK_CONF_FOLDER/spark-defaults.conf"
+      start_shuffle_service_command="$start_shuffle_service_command; /bin/tar -C /opt/ -xf /var/spark/$SPARK_FILE"
+      start_shuffle_service_command="$start_shuffle_service_command; /opt/spark*/sbin/start-mesos-shuffle-service.sh"
+      docker exec "$SLAVE_CONTAINER_NAME"_"$i" /bin/bash -c "$start_shuffle_service_command"
+    fi
   done
 }
 
-# $1 variable, $2 pattern, $3 file_in $4 file_out
+#
+# Replaces the contents in a file with that of a variable emmittigna new file
+# $1 variable
+# $2 pattern
+# $3 file_in
+# $4 file_out
+#
 function replace_in_htmlfile_multi {
   if [[ "$(uname)" == "Darwin" ]]; then
     l_var="$1"
@@ -350,43 +434,54 @@ function replace_in_htmlfile_multi {
   fi
 }
 
-
+#
+# Creates the index.html in current dir, containing urls to several components'
+# uis eg. zookeeper, hdfs, mesos etc.
+#
 function create_html {
+  TOTAL_NODES=$(($NUMBER_OF_SLAVES + 1 ))
+  HTML_SNIPPET=
 
-TOTAL_NODES=$(($NUMBER_OF_SLAVES + 1 ))
-HTML_SNIPPET=
-for i in `seq 1 $NUMBER_OF_SLAVES` ; do
-HTML_SNIPPET=$HTML_SNIPPET"<div>Slave $i: $(docker_ip):$((5050 + $i))</div>"
-done
+  for i in `seq 1 $NUMBER_OF_SLAVES` ; do
+    HTML_SNIPPET=$HTML_SNIPPET"<div>Slave $i: $(docker_ip):$((5050 + $i))</div>"
+  done
 
-node_info=$(cat <<EOF
-
+  node_info=$(cat <<EOF
 <div class="my_item">Total Number of Nodes: $TOTAL_NODES (1 Master, $NUMBER_OF_SLAVES Slave(s))</div>
 <div>Mesos Master: $(docker_ip):5050 </div>
 $HTML_SNIPPET
 <div style="margin-top:1em">The IP of the docker interface on host: $(docker_ip)</div>
 <div class="my_item">$(print_host_ip)</div>
-
 <div class="alert alert-success" role="alert">Your cluster is up and running!</div>
 EOF
 )
+  replace_in_htmlfile_multi "$node_info" "REPLACE_NODES" "$SCRIPTPATH/template.html" "$SCRIPTPATH/index.html"
+  HDFS_SNIPPET_1=
+  HDFS_SNIPPET_OUT=
+  MARATHON_SNIPPET=
+  ZK_SNIPPET=
+  MESOS_OUTPUT="$(curl -s http://$(docker_ip):5050/master/state.json | python -m json.tool)"
 
-replace_in_htmlfile_multi "$node_info" "REPLACE_NODES" "$SCRIPTPATH/template.html" "$SCRIPTPATH/index.html"
+  if [[ -n $INSTALL_HDFS ]]; then
+    HDFS_SNIPPET_1="<div class=\"my_item\"><a data-toggle=\"tooltip\" data-placement=\"top\" data-original-title=\"$(docker_ip):50070\" href=\"http://$(docker_ip):50070\">Hadoop UI</a></div>\
+    <div>HDFS url: hdfs://$(docker_ip):8020</div>"
+    HDFS_SNIPPET_OUT="<div> <a href=\"#\" id=\"hho_link\"> Hadoop Healthcheck output </a></div> \
+    <div id=\"hho\" class=\"my_item\"><pre>$(docker exec spm_master hdfs dfsadmin -report)</pre></div>"
+  fi
 
-HDFS_SNIPPET_1=
-HDFS_SNIPPET_OUT=
-if [[ -n $INSTALL_HDFS ]]; then
-HDFS_SNIPPET_1="<div class=\"my_item\"><a data-toggle=\"tooltip\" data-placement=\"top\" data-original-title=\"$(docker_ip):50070\" href=\"http://$(docker_ip):50070\">Hadoop UI</a></div>\
-<div>HDFS url: hdfs://$(docker_ip):8020</div>"
-HDFS_SNIPPET_OUT="<div> <a href=\"#\" id=\"hho_link\"> Hadoop Healthcheck output </a></div> \
-<div id=\"hho\" class=\"my_item\"><pre>$(docker exec spm_master hdfs dfsadmin -report)</pre></div>"
-fi
+  if [[ -n  $INSTALL_ZK ]]; then
+    ZK_SNIPPET="<div>Zookeeper uri: zk://$(docker_ip):2181</div>"
+  fi
 
-MESOS_OUTPUT="$(curl -s http://$(docker_ip):5050/master/state.json | python -m json.tool)"
+  if [[ -n $INSTALL_MARATHON ]]; then
+    MARATHON_SNIPPET="<div> <a data-toggle=\"tooltip\" data-placement=\"top\" data-original-title=\"$(docker_ip):8888\" href=\"http://$(docker_ip):8080\">Marathon UI</a> </div>"
+  fi
 
-dash_info=$(cat <<EOF
+  dash_info=$(cat <<EOF
+$MARATHON_SNIPPET
 <div> <a data-toggle="tooltip" data-placement="top" data-original-title="$(docker_ip):5050" href="http://$(docker_ip):5050">Mesos UI</a> </div>
 $HDFS_SNIPPET_1
+$ZK_SNIPPET
 <div>Spark Uri: /var/spark/${SPARK_FILE} </div>
 <div class="my_item">Spark master: mesos://$(docker_ip):5050</div>
 
@@ -396,12 +491,14 @@ $HDFS_SNIPPET_OUT
 <div style="margin-top:10px;" class="alert alert-success" role="alert">Your cluster is up and running!</div>
 EOF
 )
-replace_in_htmlfile_multi "$dash_info" "REPLACE_DASHBOARDS" "$SCRIPTPATH/index.html" "$SCRIPTPATH/index.html"
-
+  replace_in_htmlfile_multi "$dash_info" "REPLACE_DASHBOARDS" "$SCRIPTPATH/index.html" "$SCRIPTPATH/index.html"
 }
 
+#
+# Removed a docker container with a specific prefix in its name.
+# $1 prefix of the cotnainer name
+#
 function remove_container_by_name_prefix {
-
   if [[ "$(uname)" == "Darwin" ]]; then
     input="$(docker ps -a | grep $1 | awk '{print $1}')"
 
@@ -411,11 +508,9 @@ function remove_container_by_name_prefix {
   else
     docker ps -a | grep $1 | awk '{print $1}' | xargs -r docker rm -f
   fi
-
 }
 
 function show_help {
-
   cat<< EOF
   This script creates a mini mesos cluster for testing purposes.
   Usage: $SCRIPT [OPTIONS]
@@ -425,12 +520,19 @@ function show_help {
   Options:
 
   -h|--help prints this message.
-  -q|quiet no output is shown to the console regarding execution status.
+  -q|--quiet no output is shown to the console regarding execution status.
   --number-of-slaves number of slave mesos containers to create (optional, defaults to 1).
   --hadoop-binary-file  the hadoop binary file to use in docker configuration (optional, if not present tries to download the image).
   --spark-binary-file  the hadoop binary file to use in docker configuration (optional, if not present tries to download the image).
   --image-version  the image version to use for the containers (optional, defaults to the latest hardcoded value).
+  --with-zk sets master as a zookeeper node.
+  --with-mararthon starts marathon node requires zookeeper.
   --no-hdfs to ignore hdfs installation step
+  --no-hdfs to ignore hdfs installation step.
+  --no-shuffle-service to not start the external scheduler service.
+  --update-image-mesos-at-version update the mesos on docker image with a specific version
+    (use version strings from here: http://mesos.apache.org/downloads/ eg. 0.27.0). If version installed is the same nothing will be updated.
+    Can be set with env var: MIT_DOCKER_MESOS_VERSION=0.27.0. Command line argument takes precedence.
   --mem-th the percentage of the host cpus to use for slaves. Default: 0.5.
   --cpu-th the percentage of the host memory to use for slaves. Default: 0.5.
   --mesos-master-config parameters passed to the mesos master (specific only and common with slave).
@@ -440,7 +542,6 @@ EOF
 }
 
 function parse_args {
-
   #parse args
   while :; do
     case $1 in
@@ -507,8 +608,23 @@ function parse_args {
         exitWithMsg '"cpu_th" requires a non-empty option argument.\n'
       fi
       ;;
-      --no-hdfs)       # Takes an option argument, ensuring it has been specified.
+      --no-hdfs)
       INSTALL_HDFS=
+      shift 1
+      continue
+      ;;
+      --with-zk)
+      INSTALL_ZK="TRUE"
+      shift 1
+      continue
+      ;;
+      --with-marathon)
+      INSTALL_MARATHON="TRUE"
+      shift 1
+      continue
+      ;;
+      --no-shuffle-service)
+      START_SHUFFLE_SERVICE=
       shift 1
       continue
       ;;
@@ -519,6 +635,15 @@ function parse_args {
         continue
       else
         exitWithMsg '"--mesos-master-config" requires a non-empty option argument.\n'
+      fi
+      ;;
+      --update-image-mesos-at-version)
+      if [ -n "$2" ]; then
+        MIT_IMAGE_MESOS_VERSION=$2
+        shift 2
+        continue
+      else
+        exitWithMsg '"--update-image-mesos-at-version" requires a non-empty option argument.\n'
       fi
       ;;
       --mesos-slave-config)       # Takes an option argument, ensuring it has been specified.
@@ -558,6 +683,10 @@ function parse_args {
     exitWithMsg "Don't specify no-hdfs flag, --hadoop-binary-path is only used when hdfs is used which is default"
   fi
 
+  if [[ -z $INSTALL_ZK && -n $INSTALL_MARATHON ]]; then
+    exitWithMsg "Marathon needs zookeeper. Use --with-zk flag to enable it."
+  fi
+
   if [[ -n $SLAVES_CONFIG_FILE ]]; then
     if [[ -f $SLAVES_CONFIG_FILE ]]; then
       . cfg.sh
@@ -578,7 +707,6 @@ function parse_args {
   if [[ -n $HADOOP_BINARY_PATH ]]; then
    HADOOP_FILE=${HADOOP_BINARY_PATH##*/}
   fi
-
 }
 
 function exitWithMsg {
@@ -595,46 +723,50 @@ function printMsg {
 
 ################################## MAIN ####################################
 
-parse_args "$@"
+function main {
+  parse_args "$@"
+  cat $SCRIPTPATH/message.txt
+  echo -e "\n"
+  type docker >/dev/null 2>&1 || { echo >&2 "docker binary is required but it's not installed.  Aborting."; exit 1; }
 
-cat $SCRIPTPATH/message.txt
+  printMsg "Setting folders..."
+  mkdir -p $SCRIPTPATH/binaries
 
-echo -e "\n"
+  printMsg "Stopping and removing master container(s)..."
+  remove_container_by_name_prefix $MASTER_CONTAINER_NAME
 
-type docker >/dev/null 2>&1 || { echo >&2 "docker binary is required but it's not installed.  Aborting."; exit 1; }
+  printMsg "Stopping and removing slave container(s)..."
+  remove_container_by_name_prefix $SLAVE_CONTAINER_NAME
 
-printMsg "Setting folders..."
-mkdir -p $SCRIPTPATH/binaries
+  printMsg "Getting binaries..."
+  get_binaries
 
-#clean up containers
+  printMsg "Starting master(s)..."
+  start_master
 
-printMsg "Stopping and removing master container(s)..."
-remove_container_by_name_prefix $MASTER_CONTAINER_NAME
+  printMsg "Starting slave(s)..."
+  start_slaves
 
-printMsg "Stopping and removing slave container(s)..."
-remove_container_by_name_prefix $SLAVE_CONTAINER_NAME
+  printMsg "Mesos cluster started!"
+  printMsg "Mesos cluster dashboard url http://$(docker_ip):5050"
 
-printMsg "Getting binaries..."
-get_binaries
+  if [[ -n $INSTALL_HDFS ]]; then
+    printMsg "Hdfs cluster started!"
+    printMsg "Hdfs cluster dashboard url http://$(docker_ip):50070"
+    printMsg "Hdfs url hdfs://$(docker_ip):8020"
+  fi
 
-printMsg "Starting master(s)..."
-start_master
+  if [[ -n  $INSTALL_ZK ]]; then
+    printMsg "Zookeeper url zk://$(docker_ip):2181"
+  fi
 
-printMsg "Starting slave(s)..."
-start_slaves
+  if [[ -n $INSTALL_MARATHON ]]; then
+    printMsg "Marathon url http://$(docker_ip):8080"
+  fi
 
-printMsg "Mesos cluster started!"
+  generate_application_conf_file
+  create_html
+}
 
-printMsg "Mesos cluster dashboard url http://$(docker_ip):5050"
-
-if [[ -n $INSTALL_HDFS ]]; then
-  printMsg "Hdfs cluster started!"
-  printMsg "Hdfs cluster dashboard url http://$(docker_ip):50070"
-  printMsg "Hdfs url hdfs://$(docker_ip):8020"
-fi
-
-generate_application_conf_file
-
-create_html
-
+main "$@"
 exit 0

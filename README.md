@@ -13,8 +13,10 @@ file.
 ## 1. To run the tests with default configuration
 
 ```sh
-./run-tests.sh <path to spark.tgz file>
+./run-tests.sh <path to spark.tgz file>  
 ```
+You can also use after the file parameter: the --with-zk and the --with-marathon
+flags to get zk and marathon up and running as well.
 
 ## 2. To run the tests with custom configuration  
 

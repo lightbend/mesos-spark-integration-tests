@@ -228,3 +228,16 @@ An example of using the file would be:
 ```
 
 Note: Using a configuration file overrides the number of slaves started and takes precedence over --number-of-slaves or the default value.
+
+### Setting docker mesos lib version
+
+By default docker images should have the latest mesos library as it is defined here:
+http://mesos.apache.org/downloads/.
+
+If there is an issue with some mesos release you can always fallback by setting the docker mesos lib version
+through either command line with the parameter *update-image-mesos-at-version* or through the environmental variable
+*MIT_DOCKER_MESOS_VERSION*.
+This assumes you have set the appropriate version on your host machine as well.
+
+Note: Ubuntu images use ubuntu repositories to fetch mesos libraries, this may change in the future if
+repositories are not updated regularly.
