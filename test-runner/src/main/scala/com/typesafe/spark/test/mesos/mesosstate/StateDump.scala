@@ -100,12 +100,12 @@ object MesosSlave {
     val used = Resources(
       c.getDouble("used_resources.cpus"),
       c.getDouble("used_resources.disk"),
-      c.getInt("used_resources.mem"))
+      c.getDouble("used_resources.mem"))
 
     val unreserved = Resources(
       c.getDouble("unreserved_resources.cpus"),
-      c.getDouble("unreserved.resources.disk"),
-      c.getDouble("unreserved.resources.mem"))
+      c.getDouble("unreserved_resources.disk"),
+      c.getDouble("unreserved_resources.mem"))
 
     MesosSlave(slaveId, resources, unreserved, used, reserved)
   }

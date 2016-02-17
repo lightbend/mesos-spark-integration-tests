@@ -20,4 +20,7 @@ class ClusterModeSpec(
   import MesosIntTestHelper._
 
   override val timeLimit = TEST_TIMEOUT
+
+  override val isInClusterMode = true
+
 }
