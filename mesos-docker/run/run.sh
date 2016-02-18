@@ -56,7 +56,7 @@ fi
 
 function get_latest_spark_version {
   echo "$(wget -qO- $MIRROR_SITE/mirror/apache/dist/spark/ | \
-  grep -oP "spark-[0-9].[0-9].[0-9]" | uniq | sort | tail -n1 | sed 's/spark-//g')"
+  grep -o "spark-[0-9].[0-9].[0-9]" | uniq | sort | tail -n1 | sed 's/spark-//g')"
 }
 
 function docker_ip {
@@ -98,7 +98,7 @@ function generate_application_conf_file {
   source_location="$SCRIPTPATH/../../test-runner/src/main/resources"
   target_location="$SCRIPTPATH/../../test-runner"
 
-  \cp "$source_location/application.conf.template" "$target_location/mit-application.conf"
+  cp "$source_location/application.conf.template" "$target_location/mit-application.conf"
   sed -i -- "s@replace_with_mesos_lib@$mesos_native_lib@g" "$target_location/mit-application.conf"
   sed -i -- "s@replace_with_hdfs_uri@$hdfs_url@g" "$target_location/mit-application.conf"
   sed -i -- "s@replace_with_docker_host_ip@$host_ip@g" "$target_location/mit-application.conf"
@@ -149,7 +149,12 @@ function quote_if_non_empty {
 # If different warn the user.
 #
 function check_mesos_version {
-  local MIT_MESOS_HOST_VERSION=$(dpkg -s mesos | grep Version | awk '{print $2}')
+  local declare MIT_MESOS_HOST_VERSION
+  if [[ "$(uname)" == "Darwin" ]]; then
+    MIT_MESOS_HOST_VERSION=$(brew info mesos | grep 'mesos:' | awk '{print $3}')
+  else
+    MIT_MESOS_HOST_VERSION=$(dpkg -s mesos | grep Version | awk '{print $2}')
+  fi
   local MIT_MESOS_LIB_DOCKER_VERSION=$(docker exec $1 sh -c "dpkg -s mesos | grep Version" |  awk '{print $2}')\
 
   if [[ ! "$MIT_MESOS_HOST_VERSION" == "$MIT_MESOS_LIB_DOCKER_VERSION" ]]; then
