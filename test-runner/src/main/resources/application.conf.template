@@ -2,8 +2,10 @@
 spark.role = "spark_role"
 #   The mesos master must be configured with this role.
 spark.attributes = "spark:only"
-spark.roleCpus = "2"
-#   number of cpus to use for spark.core.max in tests using a role. Should be at most the reserved cpus for the role.
+
+#   Number of cpus to use for spark.core.max in tests using a role. Should be at most the reserved cpus for the role.
+spark.roleCpus = "1"
+
 spark.executor.uri = "replace_with_spark_executor_uri"
 # spark.mesos.executor.home = "/spark"
 # spark.driver.host = "192.168.33.1"

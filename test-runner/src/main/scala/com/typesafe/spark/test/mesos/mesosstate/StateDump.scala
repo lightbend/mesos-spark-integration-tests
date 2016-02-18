@@ -42,7 +42,7 @@ object MesosCluster {
   }
 }
 
-case class Resources(cpu: Int, disk: Double, mem: Double)
+case class Resources(cpu: Double, disk: Double, mem: Double)
 case class ReservedResourcesPerRole(roleName: String, resources: Resources)
 
 case class MesosFramework(frameworkId: String, name: String, tasks: List[MesosTask], resources: Resources, active: Boolean) {
@@ -60,9 +60,9 @@ object MesosFramework {
     val frameworkId = c.getString("id")
     val frameworkName = c.getString("name")
     val resources = Resources(
-      c.getInt("resources.cpus"),
-      c.getInt("resources.disk"),
-      c.getInt("resources.mem"))
+      c.getDouble("resources.cpus"),
+      c.getDouble("resources.disk"),
+      c.getDouble("resources.mem"))
 
     MesosFramework(frameworkId, frameworkName, tasks, resources, active)
   }
@@ -80,6 +80,7 @@ object MesosSlave {
   def apply(c: Config): MesosSlave = {
     val slaveId = c.getString("id")
     import collection.JavaConverters._
+
     val reserved = c.getObject("reserved_resources").asScala.
       map {
         case (role, configObject: ConfigObject) =>
@@ -90,26 +91,28 @@ object MesosSlave {
           ReservedResourcesPerRole(role, res)
       }.toList
 
+
     val resources = Resources(
-      c.getInt("resources.cpus"),
-      c.getInt("resources.disk"),
-      c.getInt("resources.mem"))
+      c.getDouble("resources.cpus"),
+      c.getDouble("resources.disk"),
+      c.getDouble("resources.mem"))
 
     val used = Resources(
-      c.getInt("used_resources.cpus"),
-      c.getInt("used_resources.disk"),
-      c.getInt("used_resources.mem"))
+      c.getDouble("used_resources.cpus"),
+      c.getDouble("used_resources.disk"),
+      c.getDouble("used_resources.mem"))
 
     val unreserved = Resources(
-      c.getInt("unreserved_resources.cpus"),
-      c.getInt("unreserved_resources.disk"),
-      c.getInt("unreserved_resources.mem"))
+      c.getDouble("unreserved_resources.cpus"),
+      c.getDouble("unreserved_resources.disk"),
+      c.getDouble("unreserved_resources.mem"))
 
     MesosSlave(slaveId, resources, unreserved, used, reserved)
   }
 }
 
-case class MesosTask(state: MesosState)
+
+case class MesosTask (state: MesosState)
 
 object MesosTask {
   def apply(c: Config): MesosTask = {
@@ -127,5 +130,4 @@ object StateDump {
 
     println(cluster)
   }
-
 }

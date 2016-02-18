@@ -26,7 +26,7 @@ trait DynamicAllocationSpec extends Eventually { self: MesosIntTestHelper =>
 
       val startState = MesosCluster.loadStates(mesosConsoleUrl)
       val numberOfSlaves = startState.numberOfSlaves
-      val numberOfUnreservedCpus = startState.slaves.map(_.unreservedResources.cpu).sum
+      val numberOfUnreservedCpus = startState.slaves.map(_.unreservedResources.cpu).sum.toInt
 
       eventually {
         // start with 1 executor per slave
