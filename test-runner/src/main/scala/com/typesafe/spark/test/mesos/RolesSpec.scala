@@ -43,11 +43,7 @@ trait RoleSpecHelper {
       val m = MesosCluster.loadStates(mesosConsoleUrl)
       val tmp = m.slaves.map { x => x.resources.cpu }.sum
       if (isInClusterMode) {
-        if (isCoarse){
-          tmp - 2  // minus the cpus owned by the Spark Cluster and the driver itself
-        } else {
           tmp - 1 // minus the cpus owned by the Spark Cluster, which is started before the tests in cluster mode
-        }
       }
       else tmp
     }
