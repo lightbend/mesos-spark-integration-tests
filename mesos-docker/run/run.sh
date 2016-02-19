@@ -168,7 +168,7 @@ function check_mesos_version {
 # $2 the version to upgrade or downgrade to
 #
 function update_package_str {
-  local RET="$(apt-cache policy $1 | sed -n -e '/Version table:/,$p' | sed 's/\*\*\*//g' | grep "$2" | awk {'print $1'} | head -1)"
+  local RET="\$(apt-cache policy $1 | sed -n -e '/Version table:/,$p' | sed 's/\*\*\*//g' | grep "$2" | awk {'print $1'} | head -1)"
   RET="apt-get -qq --yes --force-yes install $1=$RET"
   echo $RET
 }
