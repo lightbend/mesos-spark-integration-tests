@@ -37,12 +37,13 @@ SLAVES_CONFIG_FILE=
 INSTALL_ZK=
 INSTALL_MARATHON=
 MIT_IMAGE_MESOS_VERSION=
+HISTORY_SERVER=
 
 MIRROR_SITE=http://mirror.switch.ch
 
 
-MEM_TH=$RESOURCE_THRESHOLD
-CPU_TH=$RESOURCE_THRESHOLD
+MEM_HOST_PERCENTAGE=$RESOURCE_THRESHOLD
+CPU_HOST_PERCENTAGE=$RESOURCE_THRESHOLD
 
 SPARK_CONF_FOLDER="/etc/spark/conf"
 
@@ -207,7 +208,7 @@ function start_master {
 
   start_master_command="/usr/sbin/mesos-master $zk --ip=$dip $(quote_if_non_empty $MESOS_MASTER_CONFIG)"
   start_master_command="$(get_mesos_update_command) ; $start_master_command"
-  
+
   if [[ -n $INSTALL_HDFS ]]; then
     HADOOP_VOLUME="-v $HADOOP_BINARY_PATH:/var/tmp/$HADOOP_FILE"
   else
@@ -257,6 +258,18 @@ function start_master {
     docker exec $MASTER_CONTAINER_NAME /usr/local/bin/hdfs namenode -format -nonInterActive
     docker exec $MASTER_CONTAINER_NAME /usr/local/sbin/hadoop-daemon.sh --script hdfs start namenode
     docker exec $MASTER_CONTAINER_NAME /usr/local/sbin/hadoop-daemon.sh --script hdfs start datanode
+  fi
+}
+
+#
+# Starts history server on master docker instance
+#
+function start_history_server {
+  HISTORY_FOLDER="spark_history"
+  if [[ -n $HISTORY_SERVER ]]; then
+    docker exec $MASTER_CONTAINER_NAME /bin/bash -c "hadoop fs -mkdir /$HISTORY_FOLDER"
+    docker exec $MASTER_CONTAINER_NAME /bin/bash -c "tar xzf /var/spark/$SPARK_FILE -C /tmp/"
+    docker exec $MASTER_CONTAINER_NAME /bin/bash -c "/tmp/${SPARK_FILE%.*}/sbin/start-history-server.sh --dir hdfs://$(docker_ip):8020/$HISTORY_FOLDER"
   fi
 }
 
@@ -338,8 +351,8 @@ function start_slaves {
     start_slave_command="$(get_mesos_update_command) ; $start_slave_command"
 
     echo "starting slave ...$i"
-    cpus=$(calcf $(($(get_cpus)/$NUMBER_OF_SLAVES))*$CPU_TH)
-    mem=$(calcf $(($(get_mem)/$NUMBER_OF_SLAVES))*$MEM_TH)
+    cpus=$(calcf $(($(get_cpus)/$NUMBER_OF_SLAVES))*$CPU_HOST_PERCENTAGE)
+    mem=$(calcf $(($(get_mem)/$NUMBER_OF_SLAVES))*$MEM_HOST_PERCENTAGE)
 
     echo "Using $cpus cpus and ${mem}M memory for slaves."
 
@@ -464,6 +477,7 @@ EOF
   HDFS_SNIPPET_1=
   HDFS_SNIPPET_OUT=
   MARATHON_SNIPPET=
+  HISTORY_SERVER_SNIPPET=
   ZK_SNIPPET=
   MESOS_OUTPUT="$(curl -s http://$(docker_ip):5050/master/state.json | python -m json.tool)"
 
@@ -482,12 +496,18 @@ EOF
     MARATHON_SNIPPET="<div> <a data-toggle=\"tooltip\" data-placement=\"top\" data-original-title=\"$(docker_ip):8888\" href=\"http://$(docker_ip):8080\">Marathon UI</a> </div>"
   fi
 
+  if [[ -n $HISTORY_SERVER ]]; then
+    HISTORY_SERVER_SNIPPET="<div> <a data-toggle=\"tooltip\" data-placement=\"top\" data-original-title=\"$(docker_ip):18080\" href=\"http://$(docker_ip):18080\">History Server UI</a> </div>"
+  fi
+
   dash_info=$(cat <<EOF
 $MARATHON_SNIPPET
+$HISTORY_SERVER_SNIPPET
 <div> <a data-toggle="tooltip" data-placement="top" data-original-title="$(docker_ip):5050" href="http://$(docker_ip):5050">Mesos UI</a> </div>
 $HDFS_SNIPPET_1
 $ZK_SNIPPET
-<div>Spark Uri: /var/spark/${SPARK_FILE} </div>
+<div>Spark Uri: /var/spark/${SPARK_FILE}</div>
+<div>History Server: http://$(docker_ip):18080</div>
 <div class="my_item">Spark master: mesos://$(docker_ip):5050</div>
 
 $HDFS_SNIPPET_OUT
@@ -524,38 +544,102 @@ function show_help {
 
   Options:
 
+  --cpu-host-percentage the percentage of the host cpu to use for slaves. Default: 0.5.
+  --hadoop-binary-file the hadoop binary file to use in docker configuration (optional, if not present tries to download the binary).
   -h|--help prints this message.
-  -q|--quiet no output is shown to the console regarding execution status.
-  --number-of-slaves number of slave mesos containers to create (optional, defaults to 1).
-  --hadoop-binary-file  the hadoop binary file to use in docker configuration (optional, if not present tries to download the image).
-  --spark-binary-file  the hadoop binary file to use in docker configuration (optional, if not present tries to download the image).
-  --image-version  the image version to use for the containers (optional, defaults to the latest hardcoded value).
-  --with-zk sets master as a zookeeper node.
-  --with-mararthon starts marathon node requires zookeeper.
+  --image-version the image version to use for the containers (optional, defaults to the latest hardcoded value).
+  --mem-host-percentage the percentage of the host memory to use for slaves. Default: 0.5.
+  --mesos-master-config parameters passed to the mesos master.
+  --mesos-slave-config parameters passed to the mesos slave.
   --no-hdfs to ignore hdfs installation step
-  --no-hdfs to ignore hdfs installation step.
   --no-shuffle-service to not start the external scheduler service.
-  --update-image-mesos-at-version update the mesos on docker image with a specific version
+  --number-of-slaves number of slave mesos containers to create (optional, defaults to 1).
+  -q|--quiet no output is shown to the console regarding execution status.
+  --slaves-cfg-file provide a slave configuration file to pass specific attributes per slave.
+  --spark-binary-file the hadoop binary file to use in docker configuration (optional, if not present tries to download the binary).
+  --update-image-mesos-at-version update the mesos on docker image with a specific version.
     (use version strings from here: http://mesos.apache.org/downloads/ eg. 0.27.0). If version installed is the same nothing will be updated.
     Can be set with env var: MIT_DOCKER_MESOS_VERSION=0.27.0. Command line argument takes precedence.
-  --mem-th the percentage of the host cpus to use for slaves. Default: 0.5.
-  --cpu-th the percentage of the host memory to use for slaves. Default: 0.5.
-  --mesos-master-config parameters passed to the mesos master (specific only and common with slave).
-  --mesos-slave-config parameters passed to the mesos slave(specific only an docmmon with the master).
-  --slaves-cfg-file provide a slave configuration file to pass specific attributes per slave
+  --with-history-server starts history server on master container, it will use hdfs://hdfs_host:hdfs_port/spark_history folder for app event logging.
+  --with-mararthon starts marathon node (requires zookeeper).
+  --with-zk starts zookeeper on master container.
 EOF
 }
 
 function parse_args {
   #parse args
   while :; do
-    case $1 in
+    case "$1" in
+      --cpu-host-percentage)       # Takes an option argument, ensuring it has been specified.
+      if [ -n "$2" ]; then
+        CPU_HOST_PERCENTAGE=$2
+        shift 2
+        continue
+      else
+        exitWithMsg '"cpu-host-percentage" requires a non-empty option argument.\n'
+      fi
+      ;;
+      --hadoop-binary-file)       # Takes an option argument, ensuring it has been specified.
+      if [ -n "$2" ]; then
+        HADOOP_BINARY_PATH=$2
+        shift 2
+        continue
+      else
+        exitWithMsg '"hadoop-binary-file" requires a non-empty option argument.\n'
+      fi
+      ;;
       -h|--help)   # Call a "show_help" function to display a synopsis, then exit.
       show_help
       exit
       ;;
       -q|--quiet)   # Call a "show_help" function to display a synopsis, then exit.
       IS_QUIET=1
+      shift 1
+      continue
+      ;;
+      --image-version)       # Takes an option argument, ensuring it has been specified.
+      if [ -n "$2" ]; then
+        IMAGE_VERSION=$2
+        shift 2
+        continue
+      else
+        exitWithMsg '"--image-version" requires a non-empty option argument.\n'
+      fi
+      ;;
+      --mem-host-percentage)       # Takes an option argument, ensuring it has been specified.
+      if [ -n "$2" ]; then
+        MEM_HOST_PERCENTAGE=$2
+        shift 2
+        continue
+      else
+        exitWithMsg '"mem-host-percentage" requires a non-empty option argument.\n'
+      fi
+      ;;
+      --mesos-master-config)       # Takes an option argument, ensuring it has been specified.
+      if [ -n "$2" ]; then
+        MESOS_MASTER_CONFIG=$2
+        shift 2
+        continue
+      else
+        exitWithMsg '"--mesos-master-config" requires a non-empty option argument.\n'
+      fi
+      ;;
+      --mesos-slave-config)       # Takes an option argument, ensuring it has been specified.
+      if [ -n "$2" ]; then
+        MESOS_SLAVE_CONFIG=$2
+        shift 2
+        continue
+      else
+        exitWithMsg '"--mesos-slave-config" requires a non-empty option argument.\n'
+      fi
+      ;;
+      --no-hdfs)
+      INSTALL_HDFS=
+      shift 1
+      continue
+      ;;
+      --no-shuffle-service)
+      START_SHUFFLE_SERVICE=
       shift 1
       continue
       ;;
@@ -568,6 +652,15 @@ function parse_args {
         exitWithMsg '"--number-of-slaves" requires a non-empty option argument.\n'
       fi
       ;;
+      --slaves-cfg-file)       # Takes an option argument, ensuring it has been specified.
+      if [ -n "$2" ]; then
+        SLAVES_CONFIG_FILE=$2
+        shift 2
+        continue
+      else
+        exitWithMsg '"--slaves-cfg-file" requires a non-empty option argument.\n'
+      fi
+      ;;
       --spark-binary-file)       # Takes an option argument, ensuring it has been specified.
       if [ -n "$2" ]; then
         SPARK_BINARY_PATH=$2
@@ -575,71 +668,6 @@ function parse_args {
         continue
       else
         exitWithMsg '"spark-binary-file" requires a non-empty option argument.\n'
-      fi
-      ;;
-      --image-version)       # Takes an option argument, ensuring it has been specified.
-      if [ -n "$2" ]; then
-        IMAGE_VERSION=$2
-        shift 2
-        continue
-      else
-        exitWithMsg '"--image-version" requires a non-empty option argument.\n'
-      fi
-      ;;
-      --hadoop-binary-file)       # Takes an option argument, ensuring it has been specified.
-      if [ -n "$2" ]; then
-        HADOOP_BINARY_PATH=$2
-        shift 2
-        continue
-      else
-        exitWithMsg '"hadoop-binary-file" requires a non-empty option argument.\n'
-      fi
-      ;;
-      --mem-th)       # Takes an option argument, ensuring it has been specified.
-      if [ -n "$2" ]; then
-        MEM_TH=$2
-        shift 2
-        continue
-      else
-        exitWithMsg '"mem_th" requires a non-empty option argument.\n'
-      fi
-      ;;
-      --cpu-th)       # Takes an option argument, ensuring it has been specified.
-      if [ -n "$2" ]; then
-        CPU_TH=$2
-        shift 2
-        continue
-      else
-        exitWithMsg '"cpu_th" requires a non-empty option argument.\n'
-      fi
-      ;;
-      --no-hdfs)
-      INSTALL_HDFS=
-      shift 1
-      continue
-      ;;
-      --with-zk)
-      INSTALL_ZK="TRUE"
-      shift 1
-      continue
-      ;;
-      --with-marathon)
-      INSTALL_MARATHON="TRUE"
-      shift 1
-      continue
-      ;;
-      --no-shuffle-service)
-      START_SHUFFLE_SERVICE=
-      shift 1
-      continue
-      ;;
-      --mesos-master-config)       # Takes an option argument, ensuring it has been specified.
-      if [ -n "$2" ]; then
-        MESOS_MASTER_CONFIG=$2
-        shift 2
-        continue
-      else
-        exitWithMsg '"--mesos-master-config" requires a non-empty option argument.\n'
       fi
       ;;
       --update-image-mesos-at-version)
@@ -651,29 +679,26 @@ function parse_args {
         exitWithMsg '"--update-image-mesos-at-version" requires a non-empty option argument.\n'
       fi
       ;;
-      --mesos-slave-config)       # Takes an option argument, ensuring it has been specified.
-      if [ -n "$2" ]; then
-        MESOS_SLAVE_CONFIG=$2
-        shift 2
-        continue
-      else
-        exitWithMsg '"--mesos-slave-config" requires a non-empty option argument.\n'
-      fi
+      --with-history-server)
+      HISTORY_SERVER="TRUE"
+      shift 1
+      continue
       ;;
-      --slaves-cfg-file)       # Takes an option argument, ensuring it has been specified.
-      if [ -n "$2" ]; then
-        SLAVES_CONFIG_FILE=$2
-        shift 2
-        continue
-      else
-        exitWithMsg '"--slaves-cfg-file" requires a non-empty option argument.\n'
-      fi
+      --with-marathon)
+      INSTALL_MARATHON="TRUE"
+      shift 1
+      continue
+      ;;
+      --with-zk)
+      INSTALL_ZK="TRUE"
+      shift 1
+      continue
       ;;
       --)              # End of all options.
       shift
       break
       ;;
-      -?*)
+      -*)
       printf 'The option is not valid...: %s\n' "$1" >&2
       show_help
       exit 1
@@ -722,7 +747,7 @@ function exitWithMsg {
 
 function printMsg {
   if [[ ! -n "$IS_QUIET" ]]; then
-    echo -e "$1\n"
+    printf '%s\n' "$1"
   fi
 }
 
@@ -731,7 +756,7 @@ function printMsg {
 function main {
   parse_args "$@"
   cat $SCRIPTPATH/message.txt
-  echo -e "\n"
+  printf "\n"
   type docker >/dev/null 2>&1 || { echo >&2 "docker binary is required but it's not installed.  Aborting."; exit 1; }
 
   printMsg "Setting folders..."
@@ -752,6 +777,11 @@ function main {
   printMsg "Starting slave(s)..."
   start_slaves
 
+  if [[ -n $HISTORY_SERVER ]]; then
+    printMsg "Starting history server..."
+    start_history_server
+  fi
+
   printMsg "Mesos cluster started!"
   printMsg "Mesos cluster dashboard url http://$(docker_ip):5050"
 
@@ -769,6 +799,9 @@ function main {
     printMsg "Marathon url http://$(docker_ip):8080"
   fi
 
+  if [[ -n $HISTORY_SERVER ]]; then
+    printMsg "History server url http://$(docker_ip):18080"
+  fi
   generate_application_conf_file
   create_html
 }

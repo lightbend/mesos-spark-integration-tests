@@ -13,10 +13,11 @@ file.
 ## 1. To run the tests with default configuration
 
 ```sh
-./run-tests.sh <path to spark.tgz file>  
+./run-tests.sh --distro <path to spark.tgz file>  
 ```
-You can also use after the file parameter: the --with-zk and the --with-marathon
-flags to get zk and marathon up and running as well.
+You can also use extra parameters passed directly to run.sh script which creates the cluster (see Create a Cluster section bellow).
+eg. use ./run-tests.sh --distro <path to spark.tgz file>  --extra-cluster-config "--with-zk --with-marathon",
+--with-zk and--with-marathon flags get zk and marathon up and running.
 
 ## 2. To run the tests with custom configuration  
 
