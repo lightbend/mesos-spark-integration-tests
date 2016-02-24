@@ -12,7 +12,7 @@ import org.apache.commons.io.FilenameUtils
 ;
 
 object DCOSClusterModeRunner {
-  def run(dcosURL : String, applicationJarPath : String)(implicit config: Config): String = {
+  def run(applicationJarPath : String)(implicit config: Config): String = {
     uploadToS3(applicationJarPath)
 
     val basename = FilenameUtils.getBaseName(applicationJarPath)

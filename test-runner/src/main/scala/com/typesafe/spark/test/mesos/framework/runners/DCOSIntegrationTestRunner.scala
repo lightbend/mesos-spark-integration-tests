@@ -9,9 +9,8 @@ object DCOSIntegrationTestRunner {
 
     implicit val config = ConfigFactory.load()
 
-    val dcosURL = args(0)
-    val applicationJarPath = args(1)
-    val result = DCOSClusterModeRunner.run(dcosURL, applicationJarPath)
+    val applicationJarPath = args(0)
+    val result = DCOSClusterModeRunner.run(applicationJarPath)
 
     printMsg("TestResults:")
     println(result)

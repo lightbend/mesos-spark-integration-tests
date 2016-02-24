@@ -6,7 +6,7 @@ import scala.concurrent.Await
 import scala.concurrent.ExecutionContext.Implicits
 import scala.concurrent.Future
 
-import org.scalatest.{ Finders, FunSuite }
+import org.scalatest.{ Finders, FunSuite, Tag }
 import org.scalatest.time.SpanSugar
 
 import org.apache.spark.{ SparkConf, SparkContext }
@@ -25,21 +25,21 @@ trait MesosIntTestHelper { self: FunSuite =>
    * Creates a SparkContext based on the given properties and reports test result to runner
    * @param name name of the job and mesos framework. The SPARK_FRAMEWORK_PREFIX-$name is used as the Spark
    *             application name.
-   * @param ps  key-value pairs of Spark configuration
+   * @param properties  key-value pairs of Spark configuration
    * @param t function that contains the testcase
    * @return ()
    */
-  def runSparkTest(name: String, ps: (String, String)*)(t: (SparkContext) => Unit) {
+  def runSparkTest(name: String, properties: () => Seq[(String, String)], tags: Seq[Tag] = Nil)(t: (SparkContext) => Unit) {
     import scala.concurrent.ExecutionContext.Implicits._
     import scala.concurrent.duration._
 
-    test(name) {
+    test(name, tags: _*) {
       val sparkConf = new SparkConf()
         .setAppName(s"$SPARK_FRAMEWORK_PREFIX-$name")
         .set("spark.executor.memory", "512mb")
         .set("spark.app.id", "mit-spark")
       for (
-        (key, value) <- ps
+        (key, value) <- properties()
       ) {
         sparkConf.set(key, value)
       }
