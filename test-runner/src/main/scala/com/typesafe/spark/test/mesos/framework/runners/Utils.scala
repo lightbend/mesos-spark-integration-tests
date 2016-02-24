@@ -106,23 +106,39 @@ object Utils {
     println("")
   }
 
-  def startMesosDispatcher(sparkHome: String, sparkExecutorPath: String, mesosMasterUrl: String)(implicit config: Config): String = {
+  def startMesosDispatcher(
+      sparkHome: String,
+      sparkExecutorPath: String,
+      mesosMasterUrl: String,
+      stopRunningDispatcher: Boolean = true,
+      zk: Option[String] = None,
+      instance: Int = 1,
+      port: Option[Int] = None,
+      webuiPort: Option[Int] = None,
+      extraProps: Map[String, String] = Map())(implicit config: Config): String = {
     // stop any running mesos dispatcher first
-    val result = stopMesosDispatcher(sparkHome)
+    val result = stopMesosDispatcher(sparkHome, instance)
     printMsg(s"Stopped mesos dispatcher $result")
 
-    // TODO: make the port configurable
-    val dispatcherPort = config.getInt("mesos.dispatcher.port")
+    val dispatcherPort = port.getOrElse(config.getInt("mesos.dispatcher.port"))
+    val dispatcherWebUiPort = webuiPort.getOrElse(config.getInt("mesos.dispatcher.webui.port"))
     val dispatcherHost = InetAddress.getLocalHost().getHostName()
 
-    val mesosStartDispatcherDesc = Seq(s"${sparkHome}/sbin/start-mesos-dispatcher.sh",
+    var mesosStartDispatcherDesc = Seq(s"${sparkHome}/sbin/start-mesos-dispatcher.sh",
       s"--master ${mesosMasterUrl}",
-      s"--host ${dispatcherHost}",
-      s"--port ${dispatcherPort}"
+      s"--webui-port ${dispatcherWebUiPort}"
     )
+
+    zk.foreach { z => mesosStartDispatcherDesc ++= Seq("--zk " + z) }
+
     val env = Seq(
+      "SPARK_MESOS_DISPATCHER_HOST" -> dispatcherHost,
+      "SPARK_MESOS_DISPATCHER_PORT" -> dispatcherPort.toString(),
       "MESOS_NATIVE_JAVA_LIBRARY" -> mesosNativeLibraryLocation(),
-      "SPARK_EXECUTOR_URI" -> sparkExecutorPath
+      "SPARK_EXECUTOR_URI" -> sparkExecutorPath,
+      "SPARK_DAEMON_JAVA_OPTS" -> extraProps.map { pair => s"-D${pair._1}=${pair._2}" }.mkString(" "),
+      "SPARK_JAVA_OPTS" -> extraProps.map { pair => s"-D${pair._1}=${pair._2}" }.mkString(" "),
+      "SPARK_MESOS_DISPATCHER_NUM" -> instance.toString()
     )
 
     val cmdStr = mesosStartDispatcherDesc.mkString(" ")
@@ -166,8 +182,8 @@ object Utils {
     s"$uri/app/$fileName"
   }
 
-  def stopMesosDispatcher(sparkHome: String): Int = {
-    Process(s"${sparkHome}/sbin/stop-mesos-dispatcher.sh").!
+  def stopMesosDispatcher(sparkHome: String, instance: Int = 1): Int = {
+    Process(s"${sparkHome}/sbin/stop-mesos-dispatcher.sh", None, {"SPARK_MESOS_DISPATCHER_NUM" -> instance.toString()}).!
   }
 }
 

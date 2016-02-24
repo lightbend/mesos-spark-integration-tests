@@ -22,5 +22,4 @@ class ClusterModeSpec(
   override val timeLimit = TEST_TIMEOUT
 
   override val isInClusterMode = true
-
 }

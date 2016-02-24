@@ -52,6 +52,13 @@ sbt "mit <spark_home> mesos://<mesos-master-ip>:5050"
  make sure you have a Spark binary distribution downloaded and
  unzipped*
 
+To run the Multiple cluster mode tests with zookeeper
+
+```sh
+cd mesos-spark-integration-tests
+sbt "mcm <spark_home> mesos://<mesos-master-ip>:5050"
+```
+
 ### DCOS cluster
 
 The DCOS test runner uploads the Spark test JAR to S3 so the cluster

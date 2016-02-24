@@ -51,13 +51,14 @@ def addSparkDependencies(sparkHome: Option[String]) = if (sparkHome.isDefined) {
 sparkHome := sys.props.get("spark.home")
 
 libraryDependencies ++= addSparkDependencies(sparkHome.value) ++ Seq(
- "org.apache.hadoop" % "hadoop-client"    % "2.6.1" % "provided" excludeAll(
+ "org.apache.hadoop"     % "hadoop-client"   % "2.6.1" % "provided" excludeAll(
    ExclusionRule(organization = "commons-beanutils"),
    ExclusionRule(organization = "org.apache.hadoop", name ="hadoop-yarn-api")),
- "org.scalatest"     %% "scalatest"       % "2.2.4",
- "com.typesafe"      %  "config"          % "1.2.1",
- "com.amazonaws"     % "aws-java-sdk"     % "1.0.002",
- "commons-io"        % "commons-io"       % "2.4"
+ "org.scalatest"        %% "scalatest"       % "2.2.4",
+ "com.typesafe"          % "config"          % "1.2.1",
+ "com.amazonaws"         % "aws-java-sdk"    % "1.0.002",
+ "commons-io"            % "commons-io"      % "2.4",
+ "org.apache.zookeeper"  % "zookeeper"       % "3.4.7"
 )
 
 
