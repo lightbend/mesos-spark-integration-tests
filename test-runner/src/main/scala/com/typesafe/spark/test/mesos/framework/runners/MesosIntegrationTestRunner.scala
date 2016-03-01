@@ -11,11 +11,10 @@ object MesosIntegrationTestRunner {
     implicit val config = ConfigFactory.load()
     printMsg(config.toString)
 
-    val failures: Int = ClientModeRunner.run(args) + ClusterModeRunner.run(args)
+    val failures: Int = ClientModeRunner.run(args) + ClusterModeRunner.run(args) + MultiClusterModeRunner.run(args)
 
     if (failures > 0) {
-      val suffix = if (failures > 1) "s" else ""
-      printMsg(Console.RED + s"ERROR: $failures test$suffix failed" + Console.RESET)
+      printMsg(Console.RED + s"ERROR: $failures test(s) failed" + Console.RESET)
       System.exit(1)
     }
   }

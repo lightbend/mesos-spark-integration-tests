@@ -20,6 +20,8 @@ test.timeout = 15 minutes
 test.runner.port = 8888
 
 mesos.dispatcher.port = 7088
+mesos.dispatcher.webui.port = 7089
+mesos.dispatcher.zookeeper.dir = "/mesos-spark-integration"
 mesos.native.library.location = "replace_with_mesos_lib"
 #   Provide full path to the mesos native library. For ubuntu its filename is libmesos.so, for mac its libmesos.dylib
 
@@ -35,4 +37,3 @@ docker.host.ip = "replace_with_docker_host_ip"
 # aws.secret_key = ""
 # aws.s3.bucket = ""
 # aws.s3.prefix = ""
-
