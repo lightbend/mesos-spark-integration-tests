@@ -76,21 +76,14 @@ Note: If you leave out `-Dconfig.file`, the default configuration file under `sr
 
 ## 3. To define your own tests
 
-In order to add your own tests you first need to understand the core design pattern of the test-runner project.
+The simplest way to add a new test is to include it in one of the existing test suites. All tests are defined in `test-runner/` as [ScalaTest](http://www.scalatest.org/) *Spec* suites.
 
-The sbt tool manages the initial task run for the two different available running
-modes for the suite itself: the DCOS mode and the local mode (the latter means on your machine enabled by docker).
+### Add a test to an existing suite
 
-For local mode for example there is an sbt task named mit used to run the tests in local mode.
-Then this sbt task when run it creates a MesosIntegrationTestRunner instance
-which then calls different runners for different deploy modes for the spark
-itself (like cluster,client, etc). Then these runners run individual specs like
-ClientModeSpec which contain the actual test code (other specific scala test
-based specs) and which finally are submitted to a mesos cluster via a SparkJobRunner instance.
+Locate the right place to add your test. Note that currently there are two *root* suites: `ClientModeSpec` and `ClusterModeSpec`, each one mixing-in other traits with actual tests. The right place would be inside one of the traits that are mixed-in.
 
-According to the nature of the tests a user may wish to add, he may or may not need to define his own spec for example he could just extend an existing one.
-For example he could just pick SimpleCoarseGrainSpec and add a test case inside that spec trait:
-```sh
+For example one could just pick SimpleCoarseGrainSpec and add a test case inside that spec trait:
+```scala
 trait SimpleCoarseGrainSpec { self: MesosIntTestHelper =>
   ...
   runSparkTest ("my test name, "spark.mesos.coarse" -> "true") { sc =>
@@ -100,4 +93,18 @@ trait SimpleCoarseGrainSpec { self: MesosIntTestHelper =>
 ```
 Then this test case will run along with the other test cases.
 
-On the other hand the user may start by defining his own sbt task and his own runners following the design pattern described above which is a lot more work but is also a more flexible approach if flexibility is needed.
+### Advanced use-cases
+
+In order to implement more involved testing scenarios you first need to understand the core design pattern of the test-runner project.
+
+The sbt tool manages the initial task run for the two different available running
+modes for the suite itself: the local mode and the DCOS mode. We will focus on the local mode, which is the more common scenario and does not require a full blown cluster. In local mode all tests are run inside a Docker-based Mesos cluster (for more info on how to create one, check the [documentation inside mesos-docker](/mesos-docker/README.md)).
+
+For local mode there is an sbt task named `mit` used to run all tests.
+When this sbt task runs, it creates a `MesosIntegrationTestRunner` instance
+which in turn then calls different runners for different deploy modes for the spark
+itself (like cluster or client). Then these runners run individual specs like
+`ClientModeSpec` which contain the actual test code (other specific scala test
+based specs) and which finally are submitted to a mesos cluster via a `SparkJobRunner` instance.
+
+According to the nature of the tests a user may wish to add, he may need to define his own Spec class, or he could go all the way by defining his own sbt task and his own runners following the design pattern described above.
