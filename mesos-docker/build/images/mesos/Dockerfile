@@ -41,4 +41,6 @@ RUN apt-key adv --keyserver keyserver.ubuntu.com --recv E56151BF && \
     apt-get install marathon=$MARATHON_VERSION && \
     rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update && apt-get install libapparmor1
+#install extra libraries needed by docker and spark
+RUN apt-get update && apt-get install libapparmor1 libsystemd-journal0
+
