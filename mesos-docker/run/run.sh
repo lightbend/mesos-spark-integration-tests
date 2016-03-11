@@ -159,7 +159,7 @@ function check_mesos_version {
   local MIT_MESOS_LIB_DOCKER_VERSION=$(docker exec $1 sh -c "dpkg -s mesos | grep Version" |  awk '{print $2}')\
 
   if [[ ! "$MIT_MESOS_HOST_VERSION" == "$MIT_MESOS_LIB_DOCKER_VERSION" ]]; then
-    printMsg "WARN: Host and Docker images have different versions, Host:$MIT_MESOS_HOST_VERSION, Image: $MIT_MESOS_LIB_DOCKER_VERSION (image always reflects the latest version). Pls upgrade host."
+    printMsg "WARN: Host and docker image have different libmesos versions, Host:$MIT_MESOS_HOST_VERSION, Image: $MIT_MESOS_LIB_DOCKER_VERSION (image always reflects the latest version). Pls upgrade host."
   fi
 }
 
