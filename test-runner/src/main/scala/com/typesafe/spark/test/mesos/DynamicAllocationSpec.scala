@@ -16,7 +16,7 @@ trait DynamicAllocationSpec extends Eventually { self: MesosIntTestHelper =>
   val initialExecutorCount = 2
 
   runSparkTest("dynamic allocation, in coarse grain mode",
-    () => List("spark.mesos.coarse" -> "true",
+    List("spark.mesos.coarse" -> "true",
       "spark.dynamicAllocation.enabled" -> "true",
       "spark.shuffle.service.enabled" -> "true",
       "spark.dynamicAllocation.executorIdleTimeout" -> "3s",

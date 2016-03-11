@@ -7,7 +7,7 @@ trait SimpleCoarseGrainSpec { self: MesosIntTestHelper =>
 
   def mesosConsoleUrl: String
 
-  runSparkTest ("simple count in coarse-grained mode", () => List("spark.mesos.coarse" -> "true")) { sc =>
+  runSparkTest ("simple count in coarse-grained mode", List("spark.mesos.coarse" -> "true")) { sc =>
     val rdd = sc.makeRDD(1 to 5)
     val res = rdd.sum()
 

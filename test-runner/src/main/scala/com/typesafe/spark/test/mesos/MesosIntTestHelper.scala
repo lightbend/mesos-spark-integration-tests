@@ -26,10 +26,11 @@ trait MesosIntTestHelper { self: FunSuite =>
    * @param name name of the job and mesos framework. The SPARK_FRAMEWORK_PREFIX-$name is used as the Spark
    *             application name.
    * @param properties  key-value pairs of Spark configuration
+   * @param tags scalatest tags to apply to the test
    * @param t function that contains the testcase
    * @return ()
    */
-  def runSparkTest(name: String, properties: () => Seq[(String, String)], tags: Seq[Tag] = Nil)(t: (SparkContext) => Unit) {
+  def runSparkTest(name: String, properties: => Seq[(String, String)], tags: Seq[Tag] = Nil)(t: (SparkContext) => Unit) {
     import scala.concurrent.ExecutionContext.Implicits._
     import scala.concurrent.duration._
 
@@ -39,7 +40,7 @@ trait MesosIntTestHelper { self: FunSuite =>
         .set("spark.executor.memory", "512mb")
         .set("spark.app.id", "mit-spark")
       for (
-        (key, value) <- properties()
+        (key, value) <- properties
       ) {
         sparkConf.set(key, value)
       }

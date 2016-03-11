@@ -17,13 +17,13 @@ trait RolesSpecSimple extends RoleSpecSimpleHelper {
   def isInClusterMode : Boolean = false
 
   runSparkTest("simple count in fine-grained mode with role - simple",
-    () => List("spark.mesos.coarse" -> "false", "spark.mesos.role" -> cfg.role)) { sc =>
+    List("spark.mesos.coarse" -> "false", "spark.mesos.role" -> cfg.role)) { sc =>
     testRoleSimple(sc, false)
 
   }
 
   runSparkTest("simple count in coarse-grained mode with role - simple",
-    () => List("spark.mesos.coarse" -> "true", "spark.mesos.role" -> cfg.role)) { sc =>
+    List("spark.mesos.coarse" -> "true", "spark.mesos.role" -> cfg.role)) { sc =>
     testRoleSimple(sc, true)
   }
 }
