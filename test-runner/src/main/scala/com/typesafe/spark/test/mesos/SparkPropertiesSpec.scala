@@ -9,7 +9,7 @@ trait SparkPropertiesSpec { self: MesosIntTestHelper =>
   def mesosConsoleUrl: String
 
   runSparkTest("spark.cores.max property should be honored in coarse grain mode",
-    "spark.mesos.coarse" -> "true", "spark.cores.max" -> "1") { sc =>
+    List("spark.mesos.coarse" -> "true", "spark.cores.max" -> "1")) { sc =>
     val rdd = sc.makeRDD(1 to 5)
     val res = rdd.sum()
 

@@ -2,9 +2,12 @@ package com.typesafe.spark.test.mesos.framework.runners
 
 import java.net.{InetAddress, Socket}
 
-import com.typesafe.spark.test.mesos.{ClientModeSpec, ClusterModeSpec}
+import com.typesafe.spark.test.mesos.SparkJobSpec
+import org.scalatest.{Filter, Args}
 
 case class RoleConfigInfo(role: String, attributes: String, roleCpus: String)
+
+class MyStdOut
 
 object SparkJobRunner {
 
@@ -15,11 +18,23 @@ object SparkJobRunner {
 
     val mesosConsoleUrl = args(0)
     val deployMode = args(1)
-    val cfg = RoleConfigInfo(args(2), args(3), args(4))
+    val role = args(2)
+    val attributes = args(3)
+    val roleCpus = args(4)
 
-    val testToRun = deployMode match {
-      case "cluster" => new ClusterModeSpec(mesosConsoleUrl, cfg)
-      case "client" => new ClientModeSpec(mesosConsoleUrl, cfg)
+    val runFunc = () => {
+      var args = Array(
+        "-s", "com.typesafe.spark.test.mesos.SparkJobSpec",
+        "-o",
+        s"-DmesosUrl=${mesosConsoleUrl}",
+        s"-DdeployMode=${deployMode}",
+        s"-Drole=${role}",
+        s"-Dattributes=${attributes}",
+        s"-DroleCpus=${roleCpus}")
+      if (deployMode == "dcos") {
+        args = args :+ "-l" :+ "skip-dcos"
+      }
+      org.scalatest.tools.Runner.run(args)
     }
 
     if (args.length > 5) {
@@ -28,17 +43,12 @@ object SparkJobRunner {
 
       val socket = new Socket(runnerAddress, runnerPort)
       try {
-        Console.withOut(socket.getOutputStream) {
-          org.scalatest.run(testToRun)
-        }
+        Console.withOut(socket.getOutputStream) {runFunc()}
       } finally {
         socket.close()
       }
     } else {
-      Console.withOut(System.out) {
-        org.scalatest.run(testToRun)
-      }
+      Console.withOut(System.out) {runFunc()}
     }
-
   }
 }

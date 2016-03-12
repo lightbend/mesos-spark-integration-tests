@@ -5,7 +5,7 @@ import org.scalatest.Assertions._
 
 import com.typesafe.spark.test.mesos.mesosstate.MesosCluster
 import com.typesafe.spark.test.mesos.framework.runners.RoleConfigInfo
-
+import org.scalatest.Tag
 
 trait RolesSpec extends RoleSpecHelper {
   self: MesosIntTestHelper =>
@@ -17,12 +17,14 @@ trait RolesSpec extends RoleSpecHelper {
   def isInClusterMode : Boolean = false
 
   runSparkTest("simple count in fine-grained mode with role",
-    "spark.mesos.coarse" -> "false", "spark.mesos.role" -> cfg.role) { sc =>
+    List("spark.mesos.coarse" -> "false", "spark.mesos.role" -> cfg.role),
+    List(Tag("skip-dcos"))) { sc =>
     testRole(sc, false)
   }
 
   runSparkTest("simple count in coarse-grained mode with role",
-    "spark.mesos.coarse" -> "true", "spark.mesos.role" -> cfg.role) { sc =>
+    List("spark.mesos.coarse" -> "true", "spark.mesos.role" -> cfg.role),
+    List(Tag("skip-dcos"))) { sc =>
     testRole(sc, true)
   }
 }
@@ -36,14 +38,14 @@ trait RoleSpecHelper {
 
     // pre-conditions
     if (cfg.role != "*") {
-      assert(m.slaves.flatMap { x => x.roleResources.map { y => y.roleName } }.contains(cfg.role), "Spark role should exist.")
+      assert(m.slaves.flatMap { x => x.reservedResources.keys }.contains(cfg.role), "Spark role should exist.")
     }
 
     val expectedUsedCpus = {
       val m = MesosCluster.loadStates(mesosConsoleUrl)
       val tmp = m.slaves.map { x => x.resources.cpu }.sum
       if (isInClusterMode) {
-          tmp - 1 // minus the cpus owned by the Spark Cluster, which is started before the tests in cluster mode
+        tmp - 1 // minus the cpus owned by the Spark Cluster, which is started before the tests in cluster mode
       }
       else tmp
     }

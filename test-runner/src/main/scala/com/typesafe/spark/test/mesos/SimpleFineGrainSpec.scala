@@ -8,7 +8,7 @@ trait SimpleFineGrainSpec { self: MesosIntTestHelper =>
 
   def mesosConsoleUrl: String
 
-  runSparkTest("simple sum in fine-grained mode", "spark.mesos.coarse" -> "false") { sc =>
+  runSparkTest("simple sum in fine-grained mode", List("spark.mesos.coarse" -> "false")) { sc =>
     val rdd = sc.makeRDD(1 to 5)
     val res = rdd.sum()
 
@@ -21,7 +21,7 @@ trait SimpleFineGrainSpec { self: MesosIntTestHelper =>
     assert(0 == m.sparkFramework.get.tasks.size, "no task should be running")
   }
 
-  runSparkTest("simple collect in fine-grained mode", "spark.mesos.coarse" -> "false") { sc =>
+  runSparkTest("simple collect in fine-grained mode", List("spark.mesos.coarse" -> "false")) { sc =>
     val rdd = sc.makeRDD(1 to 5)
     val res = rdd.collect()
 

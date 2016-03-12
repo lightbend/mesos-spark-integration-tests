@@ -2,6 +2,7 @@ package com.typesafe.spark.test.mesos
 
 import com.typesafe.spark.test.mesos.mesosstate.MesosCluster
 import org.scalatest.Assertions._
+import org.scalatest.Tag
 import org.scalatest.concurrent.Eventually
 import org.scalatest.time._
 import org.scalatest.time.SpanSugar._
@@ -15,14 +16,15 @@ trait DynamicAllocationSpec extends Eventually { self: MesosIntTestHelper =>
   val initialExecutorCount = 2
 
   runSparkTest("dynamic allocation, in coarse grain mode",
-    "spark.mesos.coarse" -> "true",
-    "spark.dynamicAllocation.enabled" -> "true",
-    "spark.shuffle.service.enabled" -> "true",
-    "spark.dynamicAllocation.executorIdleTimeout" -> "3s",
-    "spark.dynamicAllocation.maxExecutors" -> "3",
-    "spark.dynamicAllocation.minExecutors" -> "1",
-    "spark.dynamicAllocation.initialExecutors" -> initialExecutorCount.toString,
-    "spark.dynamicAllocation.schedulerBacklogTimeout" -> "1s") { sc =>
+    List("spark.mesos.coarse" -> "true",
+      "spark.dynamicAllocation.enabled" -> "true",
+      "spark.shuffle.service.enabled" -> "true",
+      "spark.dynamicAllocation.executorIdleTimeout" -> "3s",
+      "spark.dynamicAllocation.maxExecutors" -> "3",
+      "spark.dynamicAllocation.minExecutors" -> "1",
+      "spark.dynamicAllocation.initialExecutors" -> initialExecutorCount.toString,
+      "spark.dynamicAllocation.schedulerBacklogTimeout" -> "1s"),
+    List(Tag("skip-dcos"))) { sc =>
 
       val startState = MesosCluster.loadStates(mesosConsoleUrl)
       val numberOfSlaves = startState.numberOfSlaves

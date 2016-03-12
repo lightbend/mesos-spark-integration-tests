@@ -43,9 +43,14 @@ object MesosCluster {
 }
 
 case class Resources(cpu: Double, disk: Double, mem: Double)
-case class ReservedResourcesPerRole(roleName: String, resources: Resources)
 
-case class MesosFramework(frameworkId: String, name: String, tasks: List[MesosTask], resources: Resources, active: Boolean) {
+case class MesosFramework(
+    frameworkId: String,
+    name: String,
+    tasks: List[MesosTask],
+    resources: Resources,
+    active: Boolean,
+    role: String) {
   lazy val nbRunningTasks: Int =
     tasks.filter { _.state == MesosState.TASK_RUNNING }.size
 }
@@ -63,17 +68,18 @@ object MesosFramework {
       c.getDouble("resources.cpus"),
       c.getDouble("resources.disk"),
       c.getDouble("resources.mem"))
+    val role = c.getString("role")
 
-    MesosFramework(frameworkId, frameworkName, tasks, resources, active)
+    MesosFramework(frameworkId, frameworkName, tasks, resources, active, role)
   }
 }
 
 case class MesosSlave(
-  slaveId: String,
-  resources: Resources,
-  unreservedResources: Resources,
-  usedResources: Resources,
-  roleResources: List[ReservedResourcesPerRole])
+    slaveId: String,
+    resources: Resources,
+    unreservedResources: Resources,
+    usedResources: Resources,
+    reservedResources: Map[String, Resources])
 
 object MesosSlave {
 
@@ -83,14 +89,14 @@ object MesosSlave {
 
     val reserved = c.getObject("reserved_resources").asScala.
       map {
-        case (role, configObject: ConfigObject) =>
+        case (role, configObject: ConfigObject) => {
           val config = configObject.toConfig()
-          val res = Resources(config.getInt("cpus"),
-            config.getInt("mem"),
-            config.getInt("disk"))
-          ReservedResourcesPerRole(role, res)
-      }.toList
-
+          role -> Resources(
+            config.getDouble("cpus"),
+            config.getDouble("mem"),
+            config.getDouble("disk"))
+        }
+      }.toMap
 
     val resources = Resources(
       c.getDouble("resources.cpus"),

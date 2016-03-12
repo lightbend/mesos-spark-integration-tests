@@ -84,10 +84,9 @@ def runMainInCompile(sparkHome: String,
 
 
 //invoking inputtasks is weird in sbt. TODO simplify this
-def runMainInCompileDCOS(dcosURL: String,
-                         applicationJar: String) = Def.taskDyn {
+def runMainInCompileDCOS(applicationJar: String) = Def.taskDyn {
 
- val main = s" $mainDCOSClass $dcosURL $applicationJar"
+ val main = s" $mainDCOSClass $applicationJar"
  (runMain in Compile).toTask(main)
 }
 
@@ -116,19 +115,17 @@ mit := Def.inputTaskDyn {
 dcos := Def.inputTaskDyn {
  val args: Seq[String] = spaceDelimited("<arg>").parsed
 
- if(args.size != 1) {
+ if(args.size != 0) {
   val log = streams.value.log
-  log.error("Please provide all the args: <dcos-url>")
+  log.error("Task \"dcos\" takes no arguments")
   sys.error("failed")
  }
-
- val dcosURL = args(0)
 
  //depends on assembly task to package the current project
  val output = assembly.value
 
  //run the main with args
- runMainInCompileDCOS(dcosURL, output.getAbsolutePath)
+ runMainInCompileDCOS(output.getAbsolutePath)
 
 }.evaluated
 

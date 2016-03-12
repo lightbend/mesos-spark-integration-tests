@@ -28,7 +28,7 @@ object DCOSUtils {
 
   def submitSparkJobDCOS(jarURI : String)(implicit config: Config): String = {
     val sparkJobRunnerArgs = Seq[String]("http://leader.mesos:5050",
-      "cluster",
+      "dcos",
       "\"" ++ config.getString("spark.role") ++ "\"",
       config.getString("spark.attributes"),
       config.getString("spark.roleCpus")).mkString(" ")
