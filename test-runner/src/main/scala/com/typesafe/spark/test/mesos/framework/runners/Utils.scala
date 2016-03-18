@@ -95,7 +95,8 @@ object Utils {
     val cmdStr = cmd.mkString(" ")
     printMsg(s"Running command: ${cmdStr} with env vars: ${env.mkString(" ")}")
     val proc = Process(cmdStr, None, env: _*)
-    val output = proc.lineStream
+    // deprecated in Scala 2.11, but kept for compatibility with Scala 2.10
+    val output = proc.lines
     output.foreach(line => println(line))
     printMsg(s"Command completed.")
   }
@@ -144,7 +145,8 @@ object Utils {
     val cmdStr = mesosStartDispatcherDesc.mkString(" ")
     printMsg(s"Running command: ${cmdStr} with env vars: ${env.mkString(" ")}")
     val proc = Process(cmdStr, None, env: _*)
-    val output = proc.lineStream
+    // deprecated in Scala 2.11, but kept for compatibility with Scala 2.10
+    val output = proc.lines
     output.foreach(line => println(line))
 
     val numOfTries = 30
