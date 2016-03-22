@@ -1,10 +1,12 @@
 package com.typesafe.spark.test.mesos.framework.runners
 
-import org.apache.zookeeper.{KeeperException, ZKUtil, ZooKeeper}
+import org.apache.zookeeper.{KeeperException, ZKUtil, ZooKeeper, WatchedEvent, Watcher}
 
 import com.typesafe.config.{Config, ConfigFactory}
 
 import Utils._
+
+import java.util.concurrent.{CountDownLatch, TimeUnit}
 
 object MultiClusterModeRunner {
   def deleteZNodes(zk: ZooKeeper, path: String): Unit = {
@@ -41,7 +43,22 @@ object MultiClusterModeRunner {
 
     val zookeeperDir = config.getString("mesos.dispatcher.zookeeper.dir")
     val zkConnection = config.getString("spark.zk.uri").replaceAll("zk://", "")
-    val zkClient = new ZooKeeper(zkConnection, 3000, null)
+    val connectionLatch = new CountDownLatch(1)
+    val watcher = new Watcher {
+      override def process(event: WatchedEvent): Unit = {
+        if (event.getState == Watcher.Event.KeeperState.SyncConnected) {
+          connectionLatch.countDown()
+        }
+      }
+    }
+    val zkClient = new ZooKeeper(zkConnection, 3000, watcher)
+
+    val connected = connectionLatch.await(5, TimeUnit.SECONDS)
+
+    if (!connected) {
+      throw new Exception("Connection to Zookeeper not established after 5 seconds")
+    }
+
     val zookeeperDir1 = zookeeperDir + "1"
     val zookeeperDir2 = zookeeperDir + "2"
 
