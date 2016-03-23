@@ -4,13 +4,18 @@
 # date: 12/15/2015
 # purpose: Run integration tests for Apache Spark on Mesos
 ################################################################################
+
+set -e
+
 ################################ VARIABLES #####################################
-SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
+
+SCRIPTPATH="$(cd "$(dirname "$0")" ; pwd -P)"
 isDockerStarted=false
 SKIP_CLUSTER=
 EXTRA_CLUSTER_CONFIG=
-#specified spark binary file
 SparkBinaryFile=
+
+################################ FUNCTIONS #####################################
 
 #
 # Starts docker in OS X
@@ -157,14 +162,18 @@ function runTests {
   fi
 
   #stop any zombie dispatcher
-  kill $(ps -ax | awk '/grep/ {next} /MesosClusterDispatcher/ {print $1}')
+  $(ps -ax | awk '/grep/ {next} /MesosClusterDispatcher/ {print $1}') \
+  | xargs -r kill
 
   if [[ ! -n $SKIP_CLUSTER ]]; then
     #shutdown any running cluster
     $SCRIPTPATH/mesos-docker/run/cluster_remove.sh
+    SP_ROLE_RS="disk(spark_role):10000;cpus(spark_role):1;mem(spark_role):1000"
+    DEF_ROLE_RS="cpus(*):2;mem(*):2000;disk(*):10000"
     #start the cluster - pass all arguments but the first to the script
-    $SCRIPTPATH/mesos-docker/run/run.sh --spark-binary-file $SparkBinaryFile --mesos-master-config "--roles=spark_role,*" \
-    --mesos-slave-config "--resources=disk(spark_role):10000;cpus(spark_role):1;mem(spark_role):1000;cpus(*):2;mem(*):2000;disk(*):10000" "$EXTRA_CLUSTER_CONFIG"
+    $SCRIPTPATH/mesos-docker/run/run.sh --spark-binary-file $SparkBinaryFile \
+    --mesos-master-config "--roles=spark_role,*" \
+    --mesos-slave-config "--resources=$SP_ROLE_RS;$DEF_ROLE_RS" $EXTRA_CLUSTER_CONFIG
   fi
 
   echo "spark home = $sparkHome"
@@ -173,7 +182,8 @@ function runTests {
 
   #run the tests
   cd $SCRIPTPATH/test-runner
-  sbt -Dspark.home="$sparkHome" -Dconfig.file="./mit-application.conf" "mit $sparkHome mesos://$(docker_ip):5050"
+  sbt -Dspark.home="$sparkHome" -Dconfig.file="./mit-application.conf" \
+  "mit $sparkHome mesos://$(docker_ip):5050"
 
   if [[ ! -n $SKIP_CLUSTER ]]; then
     stopDockerMaybe
