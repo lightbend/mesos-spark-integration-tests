@@ -29,38 +29,34 @@ assembly <<= assembly dependsOn compileScalastyle
 // trim the assembly even further (20MB in the Scala library)
 assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false)
 
-def assemblyJarPath(sparkHome: String): String = {
-  val sparkHomeFile = file(sparkHome)
-  val assemblyJarFilter = (sparkHomeFile / "lib") * "spark-assembly-*.jar"
-  val jarPath = assemblyJarFilter.getPaths.headOption.getOrElse(sys.error(s"No spark assembly jar found under ${sparkHome}/lib"))
-  s"file:///${jarPath}"
-}
-
-def addSparkDependencies(sparkHome: Option[String]) = if (sparkHome.isDefined) {
-    Seq(
-      "org.apache.spark" % "spark-assembly" % "spark-home-version" % "provided" from(assemblyJarPath(sparkHome.get)))
-  } else {
+def addSparkDependencies(sparkHome: Option[String]): Seq[ModuleID] = if (sparkHome.isDefined) {
    Seq(
-    "org.apache.spark" %% "spark-core" % sparkVersion % "provided" withSources(),
-    "org.apache.spark" %% "spark-core" % sparkVersion % "provided" withSources(),
-    "org.apache.spark" %% "spark-streaming" % sparkVersion % "provided" withSources(),
-    "org.apache.spark" %% "spark-sql" % sparkVersion % "provided" withSources())
+     "org.apache.spark" %% "spark-core" % sparkVersion % "provided" ,
+     "org.apache.spark" %% "spark-core" % sparkVersion % "provided",
+     "org.apache.spark" %% "spark-streaming" % sparkVersion % "provided",
+     "org.apache.spark" %% "spark-sql" % sparkVersion % "provided")
+     .map(_.from(s"file:///${sparkHome.get}/jars"))
+ } else {
+   Seq(
+    "org.apache.spark" %% "spark-core" % sparkVersion % "provided",
+    "org.apache.spark" %% "spark-core" % sparkVersion % "provided",
+    "org.apache.spark" %% "spark-streaming" % sparkVersion % "provided",
+    "org.apache.spark" %% "spark-sql" % sparkVersion % "provided" ).map(_.withSources())
   }
-
 
 sparkHome := sys.props.get("spark.home")
 
 libraryDependencies ++= addSparkDependencies(sparkHome.value) ++ Seq(
  "org.apache.hadoop"     % "hadoop-client"   % "2.6.1" % "provided" excludeAll(
    ExclusionRule(organization = "commons-beanutils"),
-   ExclusionRule(organization = "org.apache.hadoop", name ="hadoop-yarn-api")),
+   ExclusionRule(organization = "org.apache.hadoop", name = "hadoop-yarn-api")),
  "org.scalatest"        %% "scalatest"       % "2.2.4",
  "com.typesafe"          % "config"          % "1.2.1",
  "com.amazonaws"         % "aws-java-sdk"    % "1.0.002",
  "commons-io"            % "commons-io"      % "2.4",
- "org.apache.zookeeper"  % "zookeeper"       % "3.4.7"
+ "org.apache.zookeeper"  % "zookeeper"       % "3.4.7",
+  "com.databricks" % "spark-csv_2.11" % "1.4.0"
 )
-
 
 // This is a bit of a hack: since Hadoop is a "provided" dependency (scraps 40MB off the assembly jar)
 // we need use the compilation classpath when running. The assembly jar (without Hadoop) will run fine
@@ -73,23 +69,21 @@ val dcos = inputKey[Unit]("Runs spark/DCOS integration tests.")
 mainClass := Some("com.typesafe.spark.test.mesos.framework.runners.MesosIntegrationTestRunner")
 val mainDCOSClass = "com.typesafe.spark.test.mesos.framework.runners.DCOSIntegrationTestRunner"
 
-//invoking inputtasks is weird in sbt. TODO simplify this
+// invoking inputtasks is weird in sbt. TODO simplify this
 def runMainInCompile(sparkHome: String,
                      mesosMasterUrl: String,
-                     applicationJar: String) = Def.taskDyn {
+                     applicationJar: String): Def.Initialize[Task[Unit]] = Def.taskDyn {
 
  val main = s"  ${mainClass.value.get} $sparkHome $mesosMasterUrl $applicationJar"
  (runMain in Compile).toTask(main)
 }
 
-
-//invoking inputtasks is weird in sbt. TODO simplify this
-def runMainInCompileDCOS(applicationJar: String) = Def.taskDyn {
+// invoking inputtasks is weird in sbt. TODO simplify this
+def runMainInCompileDCOS(applicationJar: String): Def.Initialize[Task[Unit]] = Def.taskDyn {
 
  val main = s" $mainDCOSClass $applicationJar"
  (runMain in Compile).toTask(main)
 }
-
 
 mit := Def.inputTaskDyn {
  val args: Seq[String] = spaceDelimited("<arg>").parsed
@@ -100,14 +94,14 @@ mit := Def.inputTaskDyn {
   sys.error("failed")
  }
  args foreach println
- //find the spark-submit shell script
- val sparkHome = args(0)
+ // find the spark-submit shell script
+ val sparkHome = args.head
  val mesosMasterUrl = args(1)
 
- //depends on assembly task to package the current project
+ // depends on assembly task to package the current project
  val output = assembly.value
 
- //run the main with args
+ // run the main with args
  runMainInCompile(sparkHome, mesosMasterUrl, output.getAbsolutePath)
 
 }.evaluated
@@ -115,17 +109,16 @@ mit := Def.inputTaskDyn {
 dcos := Def.inputTaskDyn {
  val args: Seq[String] = spaceDelimited("<arg>").parsed
 
- if(args.size != 0) {
+ if(args.nonEmpty) {
   val log = streams.value.log
   log.error("Task \"dcos\" takes no arguments")
   sys.error("failed")
  }
 
- //depends on assembly task to package the current project
+ // depends on assembly task to package the current project
  val output = assembly.value
 
- //run the main with args
+ // run the main with args
  runMainInCompileDCOS(output.getAbsolutePath)
 
 }.evaluated
-
