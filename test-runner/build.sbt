@@ -29,20 +29,27 @@ assembly <<= assembly dependsOn compileScalastyle
 // trim the assembly even further (20MB in the Scala library)
 assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false)
 
-def addSparkDependencies(sparkHome: Option[String]): Seq[ModuleID] = if (sparkHome.isDefined) {
-   Seq(
-     "org.apache.spark" %% "spark-core" % sparkVersion % "provided" ,
-     "org.apache.spark" %% "spark-core" % sparkVersion % "provided",
-     "org.apache.spark" %% "spark-streaming" % sparkVersion % "provided",
-     "org.apache.spark" %% "spark-sql" % sparkVersion % "provided")
-     .map(_.from(s"file:///${sparkHome.get}/jars"))
+assemblyExcludedJars in assembly := {
+ val ret = (file(sparkHome.value.get + "/jars/") * "*.jar").classpath.toList
+ ret
+}
+
+unmanagedJars in Compile ++= {
+ if (sparkHome.value.isDefined) {
+  (file(sparkHome.value.get + "/jars/") * "*.jar").classpath
  } else {
-   Seq(
-    "org.apache.spark" %% "spark-core" % sparkVersion % "provided",
-    "org.apache.spark" %% "spark-core" % sparkVersion % "provided",
-    "org.apache.spark" %% "spark-streaming" % sparkVersion % "provided",
-    "org.apache.spark" %% "spark-sql" % sparkVersion % "provided" ).map(_.withSources())
-  }
+  (file("") * "").classpath // dummy
+ }
+}
+
+def addSparkDependencies(sparkHome: Option[String]): Seq[ModuleID] = if (sparkHome.isDefined) {
+ Seq()
+} else {
+ Seq(
+  "org.apache.spark" %% "spark-core" % sparkVersion % "provided",
+  "org.apache.spark" %% "spark-streaming" % sparkVersion % "provided",
+  "org.apache.spark" %% "spark-sql" % sparkVersion % "provided" ).map(_.withSources())
+}
 
 sparkHome := sys.props.get("spark.home")
 
@@ -55,7 +62,7 @@ libraryDependencies ++= addSparkDependencies(sparkHome.value) ++ Seq(
  "com.amazonaws"         % "aws-java-sdk"    % "1.0.002",
  "commons-io"            % "commons-io"      % "2.4",
  "org.apache.zookeeper"  % "zookeeper"       % "3.4.7",
-  "com.databricks" % "spark-csv_2.11" % "1.4.0"
+ "com.databricks" % "spark-csv_2.11" % "1.4.0"
 )
 
 // This is a bit of a hack: since Hadoop is a "provided" dependency (scraps 40MB off the assembly jar)
@@ -71,8 +78,8 @@ val mainDCOSClass = "com.typesafe.spark.test.mesos.framework.runners.DCOSIntegra
 
 // invoking inputtasks is weird in sbt. TODO simplify this
 def runMainInCompile(sparkHome: String,
-                     mesosMasterUrl: String,
-                     applicationJar: String): Def.Initialize[Task[Unit]] = Def.taskDyn {
+  mesosMasterUrl: String,
+  applicationJar: String): Def.Initialize[Task[Unit]] = Def.taskDyn {
 
  val main = s"  ${mainClass.value.get} $sparkHome $mesosMasterUrl $applicationJar"
  (runMain in Compile).toTask(main)
