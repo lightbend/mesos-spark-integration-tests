@@ -56,8 +56,10 @@ fi
 ################################ FUNCTIONS #####################################
 
 function get_latest_spark_version {
-  echo "$(wget -qO- $MIRROR_SITE/mirror/apache/dist/spark/ | \
-  grep -o "spark-[0-9].[0-9].[0-9]" | uniq | sort | tail -n1 | sed 's/spark-//g')"
+  wget -qO- $MIRROR_SITE/mirror/apache/dist/spark/ | \
+  grep "spark-[0-9].[0-9].[0-9]" | \
+    uniq | sort | tail -n1 | \
+    sed 's/^.*spark-\([0-9].[0-9].[0-9]\(-preview\)*\).*$/\1/g'
 }
 
 function docker_ip {
