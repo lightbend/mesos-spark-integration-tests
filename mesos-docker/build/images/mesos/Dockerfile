@@ -38,9 +38,9 @@ RUN apt-key adv --keyserver keyserver.ubuntu.com --recv E56151BF && \
     VERSION=$(apt-cache madison mesos | head -1 | awk '{ print $3 }')  && \
     MARATHON_VERSION=$(apt-cache madison marathon | head -1 | awk '{ print $3 }') && \
     apt-get -y install mesos=$VERSION && \
-    apt-get install marathon=$MARATHON_VERSION && \
+    apt-get -y install marathon=$MARATHON_VERSION && \
     rm -rf /var/lib/apt/lists/*
 
 #install extra libraries needed by docker and spark
-RUN apt-get update && apt-get install libapparmor1 libsystemd-journal0
+RUN apt-get -y update && apt-get -y install libapparmor1 libsystemd-journal0
 

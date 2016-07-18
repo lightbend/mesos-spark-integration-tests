@@ -27,21 +27,23 @@ You will need to have installed the following libraries/programs on your host ma
 - maven
 - latest mesos lib
 
-You can install java Oracle 1.8, git, sbt and maven with the following script under util folder:
+On Ubuntu, you can install java Oracle 1.8, git, sbt and maven with the following script under util folder:
 
 ```sh
+cd util
 sudo su
 ./host_setup_ubuntu.sh
 ```
 
-The script installs among others the latest mesos library on the system and stops mesos services on your localhost so that the cluster created later can run in net=host mode.
+The script installs among others the latest Mesos library on the system and stops Mesos services on your localhost so that the cluster created later can run in net=host mode.
 
 ## Build the images or pull them
 
-To build the docker mesos image just run:
+To build the docker Mesos image, change to the `build` directory and run:
 
 ```sh
-./build.sh from the build directory.
+cd ../build   # assuming you're in the `util` directory.
+./build.sh 
 ```
 
 Note: You can always build the image with your own repo:tag name and publish it as well.
@@ -52,11 +54,12 @@ the image with docker pull skonto/spark_mesos and skip building.
 For the available options run: buildsh.sh -h or build.sh --help.
 
 ## Create the cluster
-To run and configure your cluster execute run.sh and use the appropriate options.
+To run and configure your cluster execute `run.sh` in the `run` directory and use the appropriate options.
 
 The most simple run is:
 
 ```sh
+cd ../run   # assuming you're in the `build` directory.
 ./run.sh
 ```
 
