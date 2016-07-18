@@ -17,8 +17,8 @@ SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
 IMAGE_VERSION=latest
 MASTER_CONTAINER_NAME="spm_master"
 SLAVE_CONTAINER_NAME="spm_slave"
-MASTER_IMAGE="spark_mesos:$IMAGE_VERSION"
-SLAVE_IMAGE="spark_mesos:$IMAGE_VERSION"
+MASTER_IMAGE="spark_mesos_dind:$IMAGE_VERSION"
+SLAVE_IMAGE="spark_mesos_dind:$IMAGE_VERSION"
 DOCKER_USER="skonto"
 NUMBER_OF_SLAVES=2
 SPARK_BINARY_PATH=
@@ -354,7 +354,7 @@ function start_slaves {
 
   for i in `seq 1 $NUMBER_OF_SLAVES`;
   do
-    start_slave_command="/usr/sbin/mesos-slave --master=$master --ip=$dip $(quote_if_non_empty $MESOS_SLAVE_CONFIG)"
+    start_slave_command="nohup /usr/local/bin/wrapdocker ; /usr/sbin/mesos-slave --master=$master --ip=$dip $(quote_if_non_empty $MESOS_SLAVE_CONFIG)"
     start_slave_command="$(get_mesos_update_command) ; $start_slave_command"
 
     echo "starting slave ...$i"
@@ -388,17 +388,6 @@ function start_slaves {
 
     start_slave_command="$start_slave_command  $(quote_if_non_empty $resources_cfg) $(quote_if_non_empty $attributes_cfg)"
 
-    DEV_STR=
-
-    if [[ ! "$(uname)" == "Darwin" ]]; then
-      DEVMAPPATH=$(ldconfig -p | grep 'libdevmapper.so.' | awk '{print $4}')
-      DEVMAPNAME=$(basename $DEVMAPPATH)
-      #the load target path is fixed since we know the OS we have inside the image
-      #if we change OS we need to check that too
-      #not the best choice, but is a fix for now.
-      DEV_STR="-v $DEVMAPPATH:/lib/x86_64-linux-gnu/$DEVMAPNAME"
-    fi
-
     docker run \
     -e "MESOS_PORT=$((5050 + $i))" \
     -e "MESOS_SWITCH_USER=false" \
@@ -417,11 +406,8 @@ function start_slaves {
     --privileged=true \
     --pid=host \
     --net=host \
-    --name "$SLAVE_CONTAINER_NAME"_"$i" -it -v /var/lib/docker:/var/lib/docker -v /sys/fs/cgroup:/sys/fs/cgroup \
+    --name "$SLAVE_CONTAINER_NAME"_"$i" -it \
     -v "$SPARK_BINARY_PATH":/var/spark/$SPARK_FILE $HADOOP_VOLUME \
-    -v  /usr/bin/docker:/usr/bin/docker \
-    -v  /usr/local/bin/docker:/usr/local/bin/docker \
-    -v /var/run/docker.sock:/var/run/docker.sock $DEV_STR \
     -v "$SCRIPTPATH/hadoop":/var/hadoop \
     $DOCKER_USER/$SLAVE_IMAGE /bin/bash -c "$start_slave_command"
 

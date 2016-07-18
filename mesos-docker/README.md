@@ -4,19 +4,19 @@ The project sets up a cluster of the following components using docker:
 - mesos (supported)
 - spark (supported)
 - hdfs (supported)
-- zookeeper (not supported)
-- marathon (not supported, needs zookeeper)
+- zookeeper (supported)
+- marathon (supported)
 
 ## Setup your host machine
 
 We support OS X (latest) along with the following Ubuntu versions:
 
+- Ubuntu 16.04 (Xenial)
 - Ubuntu 15.04 (vivid)
 - Ubuntu 14.04 (trusty)
 - Ubuntu 12.04 (precise)
 
 You will need to have installed the following libraries/programs on your host machine:
-
 - wget
 - python
 - curl
@@ -37,6 +37,11 @@ sudo su
 
 The script installs among others the latest Mesos library on the system and stops Mesos services on your localhost so that the cluster created later can run in net=host mode.
 
+Note: There is no mesos official release for Ubuntu 16.04 yet:
+http://stackoverflow.com/questions/37015871/not-able-to-install-mesos-on-ubuntu-16-04-desktop
+In that case the script installs from the previous ubuntu version repo.
+
+However, its better to
 ## Build the images or pull them
 
 To build the docker Mesos image, change to the `build` directory and run:

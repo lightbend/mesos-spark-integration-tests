@@ -54,6 +54,12 @@ function install_mesos_latest {
   DISTRO=$(lsb_release -is | tr '[:upper:]' '[:lower:]')
   CODENAME=$(lsb_release -cs)
 
+  if [ "$CODENAME" = 'xenial' ]
+  then
+    echo "The Ubuntu '$CODENAME' release doesn't yet have a Mesos repo. Using 'vivid'."
+    CODENAME=vivid
+  fi
+
   # Add the repository
   echo "deb http://repos.mesosphere.com/${DISTRO} ${CODENAME} main" | \
   sudo tee /etc/apt/sources.list.d/mesosphere.list
@@ -77,6 +83,6 @@ install_java
 install_sbt
 install_git
 install_maven
-install_mesos_latest 
+install_mesos_latest
 
 exit 0
