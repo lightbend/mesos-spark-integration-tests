@@ -10,7 +10,7 @@
 SCRIPT=`basename ${BASH_SOURCE[0]}`
 SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
 IMAGE_VERSION=latest
-REPO=skonto/spark_mesos
+REPO=skonto/spark_mesos_dind
 IS_QUIET=
 TO_PUBLISH=
 
