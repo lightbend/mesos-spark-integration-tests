@@ -47,10 +47,15 @@ CPU_HOST_PERCENTAGE=$RESOURCE_THRESHOLD
 
 SPARK_CONF_FOLDER="/etc/spark/conf"
 
-# Make sure we know the name of the docker machine. Fail fast if we don't
-if [[ ("$(uname)" == "Darwin") && (-z $DOCKER_MACHINE_NAME) ]]; then
-  echo "Undefined DOCKER_MACHINE_NAME. This variable is usually set for you when running 'docker env <machinename>'."
-  exit 1
+# Make sure we have docker installed on OSX.
+if [ "$(uname)" = "Darwin" ]
+then
+  type docker > /dev/null 2>&1
+  if [ $? -ne 0 ]
+  then
+    echo "OSX: Docker not found. Please install from https://www.docker.com/"
+    exit 1
+  fi
 fi
 
 ################################ FUNCTIONS #####################################
@@ -319,7 +324,7 @@ function get_cpus {
 function get_mem {
   #in Mbs
   if [[ "$(uname)" == "Darwin"  ]]; then
-    m=`docker-machine inspect $DOCKER_MACHINE_NAME | awk  '/Memory/ {print substr($2, 0, length($2) - 1); exit}'`
+    m=`docker info | awk  '/Memory/ {print $3; exit}'`
     echo "$m"
   else
     m=$(grep MemTotal /proc/meminfo | awk '{print $2}')

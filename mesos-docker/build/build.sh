@@ -111,8 +111,8 @@ printMsg "Building image:$REPO":"$IMAGE_VERSION"
 
 docker build -t "$REPO":"$IMAGE_VERSION" ./images/mesos
 
-  if [[ -n "$TO_PUBLISH" ]]; then
-    printMsg "Publishing to... $REPO:$IMAGE_VERSION"
-    docker login
-    docker push "$REPO":"$IMAGE_VERSION"
-  fi
+if [[ -n "$TO_PUBLISH" ]]; then
+  printMsg "Publishing to... $REPO:$IMAGE_VERSION"
+  docker login
+  docker push "$REPO":"$IMAGE_VERSION"
+fi
