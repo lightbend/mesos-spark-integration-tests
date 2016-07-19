@@ -109,10 +109,10 @@ type docker >/dev/null 2>&1 || { echo >&2 "docker binary is required but it's no
 
 printMsg "Building image:$REPO":"$IMAGE_VERSION"
 
-$NOOP docker build -t "$REPO":"$IMAGE_VERSION" ./images/mesos
+docker build -t "$REPO":"$IMAGE_VERSION" ./images/mesos
 
 if [[ -n "$TO_PUBLISH" ]]; then
   printMsg "Publishing to... $REPO:$IMAGE_VERSION"
-  $NOOP docker login
-  $NOOP docker push "$REPO":"$IMAGE_VERSION"
+  docker login
+  docker push "$REPO":"$IMAGE_VERSION"
 fi
