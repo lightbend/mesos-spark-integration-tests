@@ -50,7 +50,7 @@ SPARK_CONF_FOLDER="/etc/spark/conf"
 # Make sure we have docker installed on OSX.
 if [ "$(uname)" = "Darwin" ]
 then
-  which docker > /dev/null
+  type docker > /dev/null 2>&1
   if [ $? -ne 0 ]
   then
     echo "OSX: Docker not found. Please install from https://www.docker.com/"
