@@ -165,7 +165,7 @@ function check_mesos_version {
   fi
   local MIT_MESOS_LIB_DOCKER_VERSION=$(docker exec $1 sh -c "dpkg -s mesos | grep Version" |  awk '{print $2}')\
 
-  if [[ ! "$MIT_MESOS_HOST_VERSION" == "$MIT_MESOS_LIB_DOCKER_VERSION" ]]; then
+  if [[ "$MIT_MESOS_HOST_VERSION" != "$MIT_MESOS_LIB_DOCKER_VERSION" ]]; then
     printMsg "WARN: Host and docker image have different libmesos versions, Host:$MIT_MESOS_HOST_VERSION, Image: $MIT_MESOS_LIB_DOCKER_VERSION (image always reflects the latest version). Pls upgrade host."
   fi
 }
@@ -254,9 +254,10 @@ function start_master {
 
   if [[ -n $INSTALL_MARATHON ]]; then
     docker exec $MASTER_CONTAINER_NAME mkdir -p /etc/marathon/conf
-    docker exec $MASTER_CONTAINER_NAME /bin/bash -c "echo \"zk://localhost:2181/marathon\" | tee /etc/marathon/conf/zk"
-    docker exec $MASTER_CONTAINER_NAME /bin/bash -c "echo \"zk://localhost:2181/mesos\" | tee /etc/marathon/conf/master"
-    docker exec $MASTER_CONTAINER_NAME /bin/bash -c "service marathon start"
+    MARATHON_ZK="zk://localhost:2181/marathon"
+    MARATHON_MASTER="zk://localhost:2181/mesos"
+    MARATHON_COMMAND="nohup /marathon-1.1.1/bin/start --master $MARATHON_MASTER --zk $MARATHON_ZK"
+    docker exec -d $MASTER_CONTAINER_NAME /bin/bash -c "$MARATHON_COMMAND"
     check_if_service_is_running marathon 8080
   fi
 
@@ -354,7 +355,7 @@ function start_slaves {
 
   for i in `seq 1 $NUMBER_OF_SLAVES`;
   do
-    start_slave_command="nohup /usr/local/bin/wrapdocker ; /usr/sbin/mesos-slave --master=$master --ip=$dip $(quote_if_non_empty $MESOS_SLAVE_CONFIG)"
+    start_slave_command="nohup /usr/local/bin/wrapdocker; /usr/sbin/mesos-agent --master=$master --work_dir=/tmp --ip=$dip $(quote_if_non_empty $MESOS_SLAVE_CONFIG)"
     start_slave_command="$(get_mesos_update_command) ; $start_slave_command"
 
     echo "starting slave ...$i"
