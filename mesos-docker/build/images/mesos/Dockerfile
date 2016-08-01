@@ -40,14 +40,15 @@ VOLUME /var/lib/docker
 RUN apt-get update -qq && apt-get -y install upstart-sysv
 
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv E56151BF && \
-  DISTRO=$(lsb_release -is | tr '[:upper:]' '[:lower:]') && \
+    DISTRO=$(lsb_release -is | tr '[:upper:]' '[:lower:]') && \
     CODENAME=$(lsb_release -cs) && \
+    MARATHON_VERSION=1.1.1 && \
     echo $CODENAME && \
     echo $DISTRO && \
-    echo "deb http://repos.mesosphere.io/${DISTRO} trusty main" | tee /etc/apt/sources.list.d/mesosphere.list && \
+    echo "deb http://repos.mesosphere.io/${DISTRO} $CODENAME main" | tee /etc/apt/sources.list.d/mesosphere.list && \
     apt-get -y update && \
     VERSION=$(apt-cache madison mesos | head -1 | awk '{ print $3 }')  && \
-    MARATHON_VERSION=$(apt-cache madison marathon | head -1 | awk '{ print $3 }') && \
     apt-get -y install mesos=$VERSION && \
-    apt-get -y install marathon=$MARATHON_VERSION && \
+    curl -O http://downloads.mesosphere.com/marathon/v$MARATHON_VERSION/marathon-$MARATHON_VERSION.tgz && \
+    tar xzf marathon-$MARATHON_VERSION.tgz && \
     rm -rf /var/lib/apt/lists/*
