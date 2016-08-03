@@ -8,7 +8,7 @@ scalaVersion := "2.11.7"
 scalacOptions ++= Seq("-feature", "-deprecation", "-language:postfixOps")
 
 // default Spark version
-val sparkVersion = "1.6.0"
+val sparkVersion = "2.0.0"
 
 val sparkHome = SettingKey[Option[String]]("spark-home", "the value of the variable 'spark.home'")
 
