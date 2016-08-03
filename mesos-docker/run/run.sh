@@ -413,7 +413,7 @@ function start_slaves {
     $DOCKER_USER/$SLAVE_IMAGE /bin/bash -c "$start_slave_command"
 
     check_if_container_is_up "$SLAVE_CONTAINER_NAME"_"$i"
-    check_if_service_is_running mesos-slave $((5050 + $i))
+    check_if_service_is_running mesos-agent $((5050 + $i))
 
     if [[ -n $INSTALL_HDFS ]]; then
       docker exec "$SLAVE_CONTAINER_NAME"_"$i" /bin/bash /var/hadoop/hadoop_setup.sh SLAVE
