@@ -15,6 +15,9 @@ val sparkHome = SettingKey[Option[String]]("spark-home", "the value of the varia
 //
 // Scala Style setup: run scalastyle after compilation, as part of the `package` task
 //
+fork in Compile := true
+
+outputStrategy := Some(StdoutOutput)
 
 val compileScalastyle = taskKey[Unit]("compileScalastyle")
 

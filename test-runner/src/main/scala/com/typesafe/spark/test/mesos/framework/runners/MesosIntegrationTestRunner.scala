@@ -1,11 +1,13 @@
 package com.typesafe.spark.test.mesos.framework.runners
 
+import java.io.File
+
 import com.typesafe.config.ConfigFactory
 import com.typesafe.spark.test.mesos.framework.runners.Utils._
 
 object MesosIntegrationTestRunner {
   def main(args: Array[String]): Unit = {
-    implicit val config = ConfigFactory.load()
+    implicit val config = ConfigFactory.parseFile(new File("mit-application.conf"))
     printMsg(config.toString)
 
     val failures: Int = if (!config.hasPath("spark.zk.uri")) {
