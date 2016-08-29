@@ -1,11 +1,10 @@
 package com.typesafe.spark.test.mesos.framework.runners
 
-import org.apache.zookeeper.{KeeperException, ZKUtil, ZooKeeper, WatchedEvent, Watcher}
+import java.io.File
 
+import org.apache.zookeeper.{KeeperException, WatchedEvent, Watcher, ZKUtil, ZooKeeper}
 import com.typesafe.config.{Config, ConfigFactory}
-
 import Utils._
-
 import java.util.concurrent.{CountDownLatch, TimeUnit}
 
 object MultiClusterModeRunner {
@@ -128,7 +127,7 @@ object MultiClusterModeRunner {
 
 
   def main(args: Array[String]): Unit = {
-    implicit val config = ConfigFactory.load()
+    implicit val config = ConfigFactory.parseFile(new File("mit-application.conf"))
     printMsg(config.toString)
 
     if (!config.hasPath("spark.zk.uri")) {
