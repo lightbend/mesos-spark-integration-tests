@@ -33,8 +33,11 @@ assembly <<= assembly dependsOn compileScalastyle
 assemblyOption in assembly := (assemblyOption in assembly).value.copy(includeScala = false)
 
 assemblyExcludedJars in assembly := {
- val ret = (file(sparkHome.value.get + "/jars/") * "*.jar").classpath.toList
- ret
+ if (sparkHome.value.isDefined) {
+  (file(sparkHome.value.get + "/jars/") * "*.jar").classpath.toList
+ } else {
+  List.empty
+ }
 }
 
 unmanagedJars in Compile ++= {
