@@ -77,10 +77,8 @@ libraryDependencies ++= addSparkDependencies(sparkHome.value) ++ Seq(
 runMain in Compile <<= Defaults.runMainTask(fullClasspath in Compile, runner in (Compile, run))
 
 val mit = inputKey[Unit]("Runs spark/mesos integration tests.")
-val dcos = inputKey[Unit]("Runs spark/DCOS integration tests.")
 
 mainClass := Some("com.typesafe.spark.test.mesos.framework.runners.MesosIntegrationTestRunner")
-val mainDCOSClass = "com.typesafe.spark.test.mesos.framework.runners.DCOSIntegrationTestRunner"
 
 // invoking inputtasks is weird in sbt. TODO simplify this
 def runMainInCompile(sparkHome: String,
@@ -88,13 +86,6 @@ def runMainInCompile(sparkHome: String,
   applicationJar: String): Def.Initialize[Task[Unit]] = Def.taskDyn {
 
  val main = s"  ${mainClass.value.get} $sparkHome $mesosMasterUrl $applicationJar"
- (runMain in Compile).toTask(main)
-}
-
-// invoking inputtasks is weird in sbt. TODO simplify this
-def runMainInCompileDCOS(applicationJar: String): Def.Initialize[Task[Unit]] = Def.taskDyn {
-
- val main = s" $mainDCOSClass $applicationJar"
  (runMain in Compile).toTask(main)
 }
 
@@ -116,22 +107,5 @@ mit := Def.inputTaskDyn {
 
  // run the main with args
  runMainInCompile(sparkHome, mesosMasterUrl, output.getAbsolutePath)
-
-}.evaluated
-
-dcos := Def.inputTaskDyn {
- val args: Seq[String] = spaceDelimited("<arg>").parsed
-
- if(args.nonEmpty) {
-  val log = streams.value.log
-  log.error("Task \"dcos\" takes no arguments")
-  sys.error("failed")
- }
-
- // depends on assembly task to package the current project
- val output = assembly.value
-
- // run the main with args
- runMainInCompileDCOS(output.getAbsolutePath)
 
 }.evaluated

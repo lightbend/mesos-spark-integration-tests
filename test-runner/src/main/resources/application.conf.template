@@ -32,8 +32,3 @@ docker.host.ip = "replace_with_docker_host_ip"
 #   The IP address of the host as seen from docker instance. This ip address is used to connect to runner
 #   from docker instance.
 
-### aws.* vars are used to upload jars to S3 so a DCOS cluster can access them.  These are necessary for the DCOS tests.
-# aws.access_key = ""
-# aws.secret_key = ""
-# aws.s3.bucket = ""
-# aws.s3.prefix = ""
