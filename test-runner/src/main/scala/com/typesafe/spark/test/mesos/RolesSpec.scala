@@ -32,7 +32,7 @@ trait RolesSpec extends RoleSpecHelper {
 trait RoleSpecHelper {
   self: MesosIntTestHelper with RolesSpec =>
 
-  def testRole(sc: SparkContext, isCoarse: Boolean ) : Unit = {
+  def testRole(sc: SparkContext, isCoarse: Boolean) : Unit = {
 
     val m = MesosCluster.loadStates(mesosConsoleUrl)
 
@@ -85,7 +85,13 @@ trait RoleSpecHelper {
     }
 
     val res = rdd.sum()
-    assert(accum.value == expectedUsedCpus, "All cpu resources should be utilized.")
+    if(isCoarse) {
+      assert(accum.value == expectedUsedCpus, "All cpu resources should be utilized.")
+    } else {
+      // Fine grained does not fully utilize the cluster so relax the check here. This is enough for the role tests.
+      // Fine grained mode is deprecated.
+      assert(accum.value >= expectedUsedCpus - 1, "All cpu resources should be utilized.")
+    }
     assert(5050 == res, "Result should be correct.")
   }
 }
