@@ -7,7 +7,6 @@ import com.typesafe.spark.test.mesos.framework.runners.RoleConfigInfo
 
 class SparkJobSpec
   extends FunSuite with TimeLimitedTests with MesosIntTestHelper
-  with SimpleFineGrainSpec
   with SimpleCoarseGrainSpec
   with SparkPropertiesSpec
   with RolesSpec
