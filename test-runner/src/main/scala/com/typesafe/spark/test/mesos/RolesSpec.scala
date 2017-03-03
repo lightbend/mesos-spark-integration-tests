@@ -11,10 +11,9 @@ trait RolesSpec extends RoleSpecHelper {
   self: MesosIntTestHelper =>
 
   def mesosConsoleUrl: String
-
   def cfg: RoleConfigInfo
-
   def isInClusterMode : Boolean = false
+  def authToken: Option[String]
 
   runSparkTest("simple count in fine-grained mode with role",
     List("spark.mesos.coarse" -> "false", "spark.mesos.role" -> cfg.role),
@@ -34,7 +33,7 @@ trait RoleSpecHelper {
 
   def testRole(sc: SparkContext, isCoarse: Boolean) : Unit = {
 
-    val m = MesosCluster.loadStates(mesosConsoleUrl)
+    val m = MesosCluster.loadStates(mesosConsoleUrl, authToken)
 
     // pre-conditions
     if (cfg.role != "*") {
@@ -42,7 +41,7 @@ trait RoleSpecHelper {
     }
 
     val expectedUsedCpus = {
-      val m = MesosCluster.loadStates(mesosConsoleUrl)
+      val m = MesosCluster.loadStates(mesosConsoleUrl, authToken)
       val tmp = m.slaves.map { x => x.resources.cpu }.sum
       if (isInClusterMode) {
         tmp - 1 // minus the cpus owned by the Spark Cluster, which is started before the tests in cluster mode
@@ -65,7 +64,7 @@ trait RoleSpecHelper {
 
       if (idx == partitionNumber) {
         while (counter <= retries) {
-          val currentNumOfCpus = MesosCluster.loadStates(mesosUrl).sparkFramework.get.resources.cpu
+          val currentNumOfCpus = MesosCluster.loadStates(mesosUrl, authToken).sparkFramework.get.resources.cpu
 
           if (max <= currentNumOfCpus){ max = currentNumOfCpus.toInt }
 

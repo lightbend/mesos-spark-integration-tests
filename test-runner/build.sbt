@@ -68,7 +68,8 @@ libraryDependencies ++= addSparkDependencies(sparkHome.value) ++ Seq(
  "com.amazonaws"         % "aws-java-sdk"    % "1.0.002",
  "commons-io"            % "commons-io"      % "2.4",
  "org.apache.zookeeper"  % "zookeeper"       % "3.4.7",
- "com.databricks" % "spark-csv_2.11" % "1.4.0"
+ "com.databricks" % "spark-csv_2.11" % "1.4.0",
+ "org.scalaj" %% "scalaj-http" % "2.3.0"
 )
 
 // This is a bit of a hack: since Hadoop is a "provided" dependency (scraps 40MB off the assembly jar)

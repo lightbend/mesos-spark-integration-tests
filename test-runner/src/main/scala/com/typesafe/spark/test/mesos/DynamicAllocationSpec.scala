@@ -10,6 +10,7 @@ import org.scalatest.time.SpanSugar._
 trait DynamicAllocationSpec extends Eventually { self: MesosIntTestHelper =>
 
   def mesosConsoleUrl: String
+  def authToken: Option[String]
 
   implicit override val patienceConfig = PatienceConfig(timeout = scaled(Span(30, Seconds)), interval = scaled(Span(500, Millis)))
 
@@ -26,14 +27,14 @@ trait DynamicAllocationSpec extends Eventually { self: MesosIntTestHelper =>
       "spark.dynamicAllocation.schedulerBacklogTimeout" -> "1s"),
     List(Tag("skip-dcos"))) { sc =>
 
-      val startState = MesosCluster.loadStates(mesosConsoleUrl)
+      val startState = MesosCluster.loadStates(mesosConsoleUrl, authToken)
       val numberOfSlaves = startState.numberOfSlaves
       val numberOfUnreservedCpus = startState.slaves.map(_.unreservedResources.cpu).sum.toInt
 
       eventually {
         // start with 1 executor per slave
         // TODO: this is a bug, it should follow spark.dynamicAllocation.initialExecutors
-        val m = MesosCluster.loadStates(mesosConsoleUrl)
+        val m = MesosCluster.loadStates(mesosConsoleUrl, authToken)
         assertResult(true, "test driver framework should be running") {
           m.sparkFramework.isDefined
         }
@@ -44,7 +45,7 @@ trait DynamicAllocationSpec extends Eventually { self: MesosIntTestHelper =>
 
       eventually {
         // check state before running, should be done to 1 executor
-        val m = MesosCluster.loadStates(mesosConsoleUrl)
+        val m = MesosCluster.loadStates(mesosConsoleUrl, authToken)
         assertResult(true, "test driver framework should be running") {
           m.sparkFramework.isDefined
         }
@@ -58,7 +59,7 @@ trait DynamicAllocationSpec extends Eventually { self: MesosIntTestHelper =>
 
       val rdd = sc.makeRDD(1 to 25, numberOfUnreservedCpus).mapPartitions { i =>
         // wait for the other executors to be started
-        while (MesosCluster.loadStates(mesosUrl).sparkFramework.get.nbRunningTasks != numberOfSlaves)
+        while (MesosCluster.loadStates(mesosUrl, authToken).sparkFramework.get.nbRunningTasks != numberOfSlaves)
           Thread.sleep(1000)
 
         i
@@ -69,7 +70,7 @@ trait DynamicAllocationSpec extends Eventually { self: MesosIntTestHelper =>
 
       {
         // check state after running, should have 1 executor per slave
-        val m = MesosCluster.loadStates(mesosConsoleUrl)
+        val m = MesosCluster.loadStates(mesosConsoleUrl, authToken)
         assertResult(true, "test driver framework should be running") {
           m.sparkFramework.isDefined
         }
@@ -80,7 +81,7 @@ trait DynamicAllocationSpec extends Eventually { self: MesosIntTestHelper =>
 
       eventually {
         // check state after waiting, should be back down to 1 executor
-        val m = MesosCluster.loadStates(mesosConsoleUrl)
+        val m = MesosCluster.loadStates(mesosConsoleUrl, authToken)
         assertResult(true, "test driver framework should be running") {
           m.sparkFramework.isDefined
         }
@@ -91,7 +92,7 @@ trait DynamicAllocationSpec extends Eventually { self: MesosIntTestHelper =>
 
       val rdd2 = sc.makeRDD(1 to 25, numberOfUnreservedCpus).mapPartitions { i =>
         // wait for the other executors to be started
-        while (MesosCluster.loadStates(mesosUrl).sparkFramework.get.nbRunningTasks != numberOfSlaves)
+        while (MesosCluster.loadStates(mesosUrl, authToken).sparkFramework.get.nbRunningTasks != numberOfSlaves)
           Thread.sleep(1000)
 
         i
@@ -102,7 +103,7 @@ trait DynamicAllocationSpec extends Eventually { self: MesosIntTestHelper =>
 
       {
         // check state after 2nd run, should be back up to 1 executor per slave
-        val m = MesosCluster.loadStates(mesosConsoleUrl)
+        val m = MesosCluster.loadStates(mesosConsoleUrl, authToken)
         assertResult(true, "test driver framework should be running") {
           m.sparkFramework.isDefined
         }
