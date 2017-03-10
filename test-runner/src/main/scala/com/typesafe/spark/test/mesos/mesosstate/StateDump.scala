@@ -44,10 +44,13 @@ object MesosCluster {
   }
 
   def loadStates(mesosConsoleUrl: String, authToken: Option[String] = Option.empty): MesosCluster = {
-    val url = s"${mesosConsoleUrl}/state.json"
-    val state = Http(url)
-      .header("Authorization", s"token=${authToken.get}")
+    var request = Http(s"${mesosConsoleUrl}/state.json")
       .option(HttpOptions.allowUnsafeSSL)
+    if (authToken.isDefined) {
+      request = request.header("Authorization", s"token=${authToken.get}")
+    }
+
+    val state = request
       .asString
       .body
     MesosCluster(state)
