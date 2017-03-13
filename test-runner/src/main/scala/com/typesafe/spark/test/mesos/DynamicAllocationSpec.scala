@@ -56,10 +56,11 @@ trait DynamicAllocationSpec extends Eventually { self: MesosIntTestHelper =>
 
       // for serialization of the condition in the following RDD transformation
       val mesosUrl = mesosConsoleUrl
+      val auth = authToken
 
       val rdd = sc.makeRDD(1 to 25, numberOfUnreservedCpus).mapPartitions { i =>
         // wait for the other executors to be started
-        while (MesosCluster.loadStates(mesosUrl, authToken).sparkFramework.get.nbRunningTasks != numberOfSlaves)
+        while (MesosCluster.loadStates(mesosUrl, auth).sparkFramework.get.nbRunningTasks != numberOfSlaves)
           Thread.sleep(1000)
 
         i
@@ -92,7 +93,7 @@ trait DynamicAllocationSpec extends Eventually { self: MesosIntTestHelper =>
 
       val rdd2 = sc.makeRDD(1 to 25, numberOfUnreservedCpus).mapPartitions { i =>
         // wait for the other executors to be started
-        while (MesosCluster.loadStates(mesosUrl, authToken).sparkFramework.get.nbRunningTasks != numberOfSlaves)
+        while (MesosCluster.loadStates(mesosUrl, auth).sparkFramework.get.nbRunningTasks != numberOfSlaves)
           Thread.sleep(1000)
 
         i

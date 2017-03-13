@@ -50,6 +50,7 @@ trait RoleSpecHelper {
     }
 
     val mesosUrl = mesosConsoleUrl
+    val auth = authToken
     val accum = sc.accumulator[Double](0L, "cpuCounter")
     val partitions = 40 // give it enough tasks
 
@@ -64,7 +65,7 @@ trait RoleSpecHelper {
 
       if (idx == partitionNumber) {
         while (counter <= retries) {
-          val currentNumOfCpus = MesosCluster.loadStates(mesosUrl, authToken).sparkFramework.get.resources.cpu
+          val currentNumOfCpus = MesosCluster.loadStates(mesosUrl, auth).sparkFramework.get.resources.cpu
 
           if (max <= currentNumOfCpus){ max = currentNumOfCpus.toInt }
 
