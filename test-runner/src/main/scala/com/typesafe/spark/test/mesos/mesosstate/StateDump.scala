@@ -8,6 +8,8 @@ import java.io.InputStreamReader
 
 import com.typesafe.spark.test.mesos.MesosIntTestHelper
 
+import scalaj.http.{Http, HttpOptions}
+
 object MesosState extends Enumeration {
   type MesosState = Value
   val TASK_STAGING, TASK_STARTING, TASK_RUNNING, TASK_FINISHED, TASK_FAILED, TASK_KILLED, TASK_LOST, TASK_ERROR = Value
@@ -37,8 +39,21 @@ object MesosCluster {
     apply(ConfigFactory.parseURL(url))
   }
 
-  def loadStates(mesosConsoleUrl: String): MesosCluster = {
-    MesosCluster(new URL(s"${mesosConsoleUrl}/state.json"))
+  def apply(state: String): MesosCluster = {
+    apply(ConfigFactory.parseString(state))
+  }
+
+  def loadStates(mesosConsoleUrl: String, authToken: Option[String] = Option.empty): MesosCluster = {
+    var request = Http(s"${mesosConsoleUrl}/state.json")
+      .option(HttpOptions.allowUnsafeSSL)
+    if (authToken.isDefined) {
+      request = request.header("Authorization", s"token=${authToken.get}")
+    }
+
+    val state = request
+      .asString
+      .body
+    MesosCluster(state)
   }
 }
 

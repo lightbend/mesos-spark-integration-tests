@@ -6,6 +6,7 @@ import org.scalatest.Assertions._
 trait SimpleCoarseGrainSpec { self: MesosIntTestHelper =>
 
   def mesosConsoleUrl: String
+  def authToken: Option[String]
 
   runSparkTest ("simple count in coarse-grained mode", List("spark.mesos.coarse" -> "true")) { sc =>
     val rdd = sc.makeRDD(1 to 5)
@@ -13,7 +14,7 @@ trait SimpleCoarseGrainSpec { self: MesosIntTestHelper =>
 
     assert(15 == res)
 
-    val m = MesosCluster.loadStates(mesosConsoleUrl)
+    val m = MesosCluster.loadStates(mesosConsoleUrl, authToken)
     assert(m.sparkFramework.isDefined, "The driver should be running")
 
     // In our setup we assume all slaves are utilized for a job.

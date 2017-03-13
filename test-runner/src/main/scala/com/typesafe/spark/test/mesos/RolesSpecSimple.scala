@@ -11,10 +11,9 @@ trait RolesSpecSimple extends RoleSpecSimpleHelper {
   self: MesosIntTestHelper =>
 
   def mesosConsoleUrl: String
-
   def cfg: RoleConfigInfo
-
   def isInClusterMode : Boolean = false
+  def authToken: Option[String]
 
   runSparkTest("simple count in fine-grained mode with role - simple",
     List("spark.mesos.coarse" -> "false", "spark.mesos.role" -> cfg.role)) { sc =>
@@ -33,7 +32,7 @@ trait RoleSpecSimpleHelper {
 
   def testRoleSimple(sc: SparkContext, isCoarse: Boolean ) : Unit = {
 
-    val m = MesosCluster.loadStates(mesosConsoleUrl)
+    val m = MesosCluster.loadStates(mesosConsoleUrl, authToken)
 
     // pre-conditions
     if (cfg.role != "*") {

@@ -16,32 +16,28 @@ object SparkJobRunner {
     // and ScalaTest gets a chance to collect the failing test result
     System.setSecurityManager(NoExitSecurityManager)
 
-    val mesosConsoleUrl = args(0)
-    val deployMode = args(1)
-    val role = args(2)
-    val attributes = args(3)
-    val roleCpus = args(4)
+    val jobArgs = SparkJobRunnerArgs(args)
 
     val runFunc = () => {
-      var args = Array(
+      var runnerArgs = Array(
         "-s", "com.typesafe.spark.test.mesos.SparkJobSpec",
         "-o",
-        s"-DmesosUrl=${mesosConsoleUrl}",
-        s"-DdeployMode=${deployMode}",
-        s"-Drole=${role}",
-        s"-Dattributes=${attributes}",
-        s"-DroleCpus=${roleCpus}")
-      if (deployMode == "dcos") {
-        args = args :+ "-l" :+ "skip-dcos"
+        s"-DmesosUrl=${jobArgs.mesosConsoleUrl}",
+        s"-DdeployMode=${jobArgs.deployMode}",
+        s"-Drole=${jobArgs.role}",
+        s"-Dattributes=${jobArgs.attributes}",
+        s"-DroleCpus=${jobArgs.roleCpus}")
+      if (jobArgs.authToken.isDefined) {
+        runnerArgs = runnerArgs :+ s"-DauthToken=${jobArgs.authToken.get}"
       }
-      org.scalatest.tools.Runner.run(args)
+      if (jobArgs.deployMode == "dcos") {
+        runnerArgs = runnerArgs :+ "-l" :+ "skip-dcos"
+      }
+      org.scalatest.tools.Runner.run(runnerArgs)
     }
 
-    if (args.length > 5) {
-      val runnerAddress = InetAddress.getByName(args(5))
-      val runnerPort = args(6).toInt
-
-      val socket = new Socket(runnerAddress, runnerPort)
+    if (jobArgs.runnerAddress.isDefined) {
+      val socket = new Socket(jobArgs.runnerAddress.get, jobArgs.runnerPort.get)
       try {
         Console.withOut(socket.getOutputStream) {runFunc()}
       } finally {
@@ -50,5 +46,43 @@ object SparkJobRunner {
     } else {
       Console.withOut(System.out) {runFunc()}
     }
+  }
+}
+
+case class SparkJobRunnerArgs(
+  mesosConsoleUrl: String,
+  deployMode: String,
+  role: String,
+  attributes: String,
+  roleCpus: String,
+  runnerAddress: Option[InetAddress],
+  runnerPort: Option[Int],
+  authToken: Option[String])
+
+object SparkJobRunnerArgs {
+  def apply(args: Array[String]): SparkJobRunnerArgs = {
+
+    val (runnerAddress, runnerPort, authToken) =
+      if (args.length > 5 && args(5).charAt(0) == '-') {
+        val authToken = args(5).split("=")(1)
+        (Option.empty, Option.empty, Some(authToken))
+      } else if (args.length > 5) {
+        val runnerAddress = Some(InetAddress.getByName(args(5)))
+        val runnerPort = Some(args(6).toInt)
+        val authToken = if (args.length > 7) Some(args(7).split("=")(1)) else Option.empty
+        (runnerAddress, runnerPort, authToken)
+      } else {
+        (Option.empty, Option.empty, Option.empty)
+      }
+
+    SparkJobRunnerArgs(
+      args(0),
+      args(1),
+      args(2),
+      args(3),
+      args(4),
+      runnerAddress,
+      runnerPort,
+      authToken)
   }
 }
