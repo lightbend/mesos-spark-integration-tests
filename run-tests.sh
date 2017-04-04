@@ -1,9 +1,5 @@
-################################################################################
-#! /bin/bash
-# Author: nraychaudhuri
-# date: 12/15/2015
+#!/usr/bin/env bash
 # purpose: Run integration tests for Apache Spark on Mesos
-################################################################################
 
 set -e
 

@@ -1,10 +1,7 @@
-################################################################################
-#! /bin/bash
-# Author: skonto
-# date: 21/10/2015
+#!/usr/bin/env bash
+
 # purpose: Support spark with mesos on docker. Only net mode is supported since
 # there is a bug on the mesos side and spark may need patching.
-################################################################################
 
 set -e
 
@@ -19,19 +16,18 @@ MASTER_CONTAINER_NAME="spm_master"
 SLAVE_CONTAINER_NAME="spm_slave"
 MASTER_IMAGE="spark_mesos_dind:$IMAGE_VERSION"
 SLAVE_IMAGE="spark_mesos_dind:$IMAGE_VERSION"
-DOCKER_USER="skonto"
+DOCKER_USER="lightbend"
 NUMBER_OF_SLAVES=2
 SPARK_BINARY_PATH=
-HADOOP_BINARY_PATH=
 SPARK_VERSION=
-HADOOP_VERSION_FOR_SPARK=2.6
+HADOOP_VERSION=
 INSTALL_HDFS=1
 START_SHUFFLE_SERVICE=1
 IS_QUIET=
 SPARK_FILE=
 MESOS_MASTER_CONFIG=
 MESOS_SLAVE_CONFIG=
-HADOOP_FILE=hadoop-$HADOOP_VERSION_FOR_SPARK.0.tar.gz
+HADOOP_FILE=
 RESOURCE_THRESHOLD=1.0
 SLAVES_CONFIG_FILE=
 INSTALL_ZK=
@@ -262,7 +258,7 @@ function start_master {
   fi
 
   if [[ -n $INSTALL_HDFS ]]; then
-    docker exec $MASTER_CONTAINER_NAME /bin/bash /var/hadoop/hadoop_setup.sh
+    docker exec -e HADOOP_VERSION=$HADOOP_VERSION $MASTER_CONTAINER_NAME  /bin/bash /var/hadoop/hadoop_setup.sh
     docker exec $MASTER_CONTAINER_NAME /usr/local/bin/hdfs namenode -format -nonInterActive
     docker exec $MASTER_CONTAINER_NAME /usr/local/sbin/hadoop-daemon.sh --script hdfs start namenode
     docker exec $MASTER_CONTAINER_NAME /usr/local/sbin/hadoop-daemon.sh --script hdfs start datanode
@@ -289,7 +285,7 @@ function get_binaries {
   SPARK_VERSION="$(get_latest_spark_version)"
 
   if [[ -z $SPARK_FILE ]]; then
-    SPARK_FILE="spark-$SPARK_VERSION-bin-hadoop$HADOOP_VERSION_FOR_SPARK.tgz"
+    SPARK_FILE="spark-$SPARK_VERSION-bin-hadoop${HADOOP_VERSION}.tgz"
   fi
 
   if [[ -z "${SPARK_BINARY_PATH}" ]]; then
@@ -303,7 +299,7 @@ function get_binaries {
     if [[ -z "${HADOOP_BINARY_PATH}" ]]; then
       HADOOP_BINARY_PATH=$SCRIPTPATH/binaries/$HADOOP_FILE
       if [ ! -f "$HADOOP_BINARY_PATH" ]; then
-        TMP_FILE_PATH="hadoop-$HADOOP_VERSION_FOR_SPARK.0/hadoop-$HADOOP_VERSION_FOR_SPARK.0.tar.gz"
+        TMP_FILE_PATH="hadoop-${HADOOP_VERSION}/hadoop-${HADOOP_VERSION}.tar.gz"
         wget -P $SCRIPTPATH/binaries/ "$MIRROR_SITE/mirror/apache/dist/hadoop/common/$TMP_FILE_PATH"
       fi
     fi
@@ -416,7 +412,7 @@ function start_slaves {
     check_if_service_is_running mesos-agent $((5050 + $i))
 
     if [[ -n $INSTALL_HDFS ]]; then
-      docker exec "$SLAVE_CONTAINER_NAME"_"$i" /bin/bash /var/hadoop/hadoop_setup.sh SLAVE
+      docker exec -e HADOOP_VERSION=$HADOOP_VERSION "$SLAVE_CONTAINER_NAME"_"$i" /bin/bash /var/hadoop/hadoop_setup.sh SLAVE
       docker exec "$SLAVE_CONTAINER_NAME"_"$i" /usr/local/sbin/hadoop-daemon.sh --script hdfs start datanode
     fi
 
@@ -707,6 +703,10 @@ function parse_args {
     exitWithMsg "Don't specify no-hdfs flag, --hadoop-binary-path is only used when hdfs is used which is default"
   fi
 
+  if [[ -z $HADOOP_VERSION && -n $HADOOP_BINARY_PATH ]]; then
+    exitWithMsg "Export HADOOP_VERSION for custom binary."
+  fi
+
   if [[ -z $INSTALL_ZK && -n $INSTALL_MARATHON ]]; then
     exitWithMsg "Marathon needs zookeeper. Use --with-zk flag to enable it."
   fi
@@ -729,7 +729,12 @@ function parse_args {
   fi
 
   if [[ -n $HADOOP_BINARY_PATH ]]; then
-   HADOOP_FILE=${HADOOP_BINARY_PATH##*/}
+    HADOOP_FILE=${HADOOP_BINARY_PATH##*/}
+  fi
+
+  if [ -z $HADOOP_BINARY_PATH ]; then
+    HADOOP_VERSION=2.7.0
+    HADOOP_FILE=hadoop-$HADOOP_VERSION.tar.gz
   fi
 }
 

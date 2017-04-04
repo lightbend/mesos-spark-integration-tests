@@ -20,7 +20,7 @@ You will need to have installed the following libraries/programs on your host ma
 - wget
 - python
 - curl
-- docker version >=1.8.3 see [here](https://docs.docker.com/engine/installation/) for detailed instructions:
+- docker version (use a version that supports `-e` in docker exec, eg. 17.03) see [here](https://docs.docker.com/engine/installation/) for detailed instructions:
 - git
 - sbt
 - java 1.8
@@ -48,7 +48,7 @@ To build the docker Mesos image, change to the `build` directory and run:
 
 ```sh
 cd ../build   # assuming you're in the `util` directory.
-./build.sh 
+./build.sh
 ```
 
 Note: You can always build the image with your own repo:tag name and publish it as well.
