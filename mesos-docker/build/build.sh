@@ -1,16 +1,11 @@
-###############################################
-#! /bin/bash
-# Author: skonto
-# date: 21/10/2015
-# purpose: build master and slave mesos images
-###############################################
+#!/usr/bin/env bash
 
 ################################ VARIABLES #####################################
 
 SCRIPT=`basename ${BASH_SOURCE[0]}`
 SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
 IMAGE_VERSION=latest
-REPO=skonto/spark_mesos_dind
+REPO=lightbend/spark_mesos_dind
 IS_QUIET=
 TO_PUBLISH=
 
@@ -29,7 +24,7 @@ Options:
 -h|--help prints this message.
 -q|quiet no output is shown to the console regarding execution status.
 --tag version of image to build as it appears when executing docker ps. Default: latest
---repo docker repo to use. Default: skonto/spark_mesos
+--repo docker repo to use. Default: lightbend/spark_mesos
 --with-publish whether to publish the image to the repo, it prompts for docker login
 EOF
 

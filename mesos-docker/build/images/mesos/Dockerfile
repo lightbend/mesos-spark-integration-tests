@@ -1,10 +1,10 @@
 FROM ubuntu:16.04
-MAINTAINER LightBend <skonto>
+MAINTAINER LightBend <lightbend>
 
 #Install java properly
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN apt-get update && apt-get -y install software-properties-common python-software-properties
+RUN apt-get -qq update && apt-get -y install software-properties-common python-software-properties
 
 RUN echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | debconf-set-selections && \
   add-apt-repository -y ppa:webupd8team/java && \
@@ -46,7 +46,7 @@ RUN apt-key adv --keyserver keyserver.ubuntu.com --recv E56151BF && \
     echo $CODENAME && \
     echo $DISTRO && \
     echo "deb http://repos.mesosphere.io/${DISTRO} $CODENAME main" | tee /etc/apt/sources.list.d/mesosphere.list && \
-    apt-get -y update && \
+    apt-get -yq update && \
     VERSION=$(apt-cache madison mesos | head -1 | awk '{ print $3 }')  && \
     apt-get -y install mesos=$VERSION && \
     curl -O http://downloads.mesosphere.com/marathon/v$MARATHON_VERSION/marathon-$MARATHON_VERSION.tgz && \

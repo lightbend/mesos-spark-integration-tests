@@ -21,8 +21,8 @@ EOF
 mkdir -p /root/data/datanode
 mkdir -p /root/data/namenode
 
-tar -zxf /var/tmp/hadoop-2.6.0.tar.gz -C /var/tmp/
-cp -r /var/tmp/hadoop-2.6.0/* /usr/local/
+tar -zxf /var/tmp/hadoop-${HADOOP_VERSION}.tar.gz -C /var/tmp/
+cp -r /var/tmp/hadoop-${HADOOP_VERSION}/* /usr/local/
 #echo "0.0.0.0" > /usr/local/etc/hadoop/slaves
 
 files=( "core-site.xml" "hdfs-site.xml" )
