@@ -20,7 +20,6 @@ DOCKER_USER="lightbend"
 NUMBER_OF_SLAVES=2
 SPARK_BINARY_PATH=
 SPARK_VERSION=
-HADOOP_VERSION=
 INSTALL_HDFS=1
 START_SHUFFLE_SERVICE=1
 IS_QUIET=
@@ -703,7 +702,7 @@ function parse_args {
     exitWithMsg "Don't specify no-hdfs flag, --hadoop-binary-path is only used when hdfs is used which is default"
   fi
 
-  if [[ -z $HADOOP_VERSION && -n $HADOOP_BINARY_PATH ]]; then
+  if [ -z $HADOOP_VERSION ] && [ -n "$HADOOP_BINARY_PATH" ]; then
     exitWithMsg "Export HADOOP_VERSION for custom binary."
   fi
 
