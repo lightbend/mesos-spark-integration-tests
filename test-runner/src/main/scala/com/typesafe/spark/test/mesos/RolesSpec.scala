@@ -15,7 +15,7 @@ trait RolesSpec extends RoleSpecHelper {
   def isInClusterMode : Boolean = false
   def authToken: Option[String]
 
-  runSparkTest("simple count in fine-grained mode with role",
+  ignoreSparkTest("simple count in fine-grained mode with role",
     List("spark.mesos.coarse" -> "false", "spark.mesos.role" -> cfg.role),
     List(Tag("skip-dcos"))) { sc =>
     testRole(sc, false)

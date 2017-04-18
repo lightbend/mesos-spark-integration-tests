@@ -65,8 +65,8 @@ trait MesosIntTestHelper { self: FunSuite =>
     }
   }
 
-  def ignoreSparkTest(name: String, ps: (String, String)*)(t: (SparkContext) => Unit) {
-    ignore(name) {
+  def ignoreSparkTest(name: String, ps: => Seq[(String, String)], tags: Seq[Tag] = Nil)(t: (SparkContext) => Unit) {
+    ignore(name, tags: _*) {
     }
   }
 }
