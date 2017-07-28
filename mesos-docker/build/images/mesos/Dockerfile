@@ -39,6 +39,9 @@ VOLUME /var/lib/docker
 #install mesos - latest
 RUN apt-get update -qq && apt-get -y install upstart-sysv
 
+# for mesos >=1.3
+RUN apt-get install -y libcurl4-gnutls-dev && apt-get install -y dmsetup
+
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv E56151BF && \
     DISTRO=$(lsb_release -is | tr '[:upper:]' '[:lower:]') && \
     CODENAME=$(lsb_release -cs) && \
