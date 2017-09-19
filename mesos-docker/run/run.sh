@@ -34,9 +34,6 @@ INSTALL_MARATHON=
 MIT_IMAGE_MESOS_VERSION=
 HISTORY_SERVER=
 
-MIRROR_SITE=http://mirror.switch.ch
-
-
 MEM_HOST_PERCENTAGE=$RESOURCE_THRESHOLD
 CPU_HOST_PERCENTAGE=$RESOURCE_THRESHOLD
 
@@ -732,8 +729,14 @@ function parse_args {
   fi
 
   if [ -z $HADOOP_BINARY_PATH ]; then
-    HADOOP_VERSION=2.7.0
+    if [ -z $HADOOP_VERSION ]; then
+      HADOOP_VERSION=2.7.4
+    fi
     HADOOP_FILE=hadoop-$HADOOP_VERSION.tar.gz
+  fi
+
+  if [ -z $MIRROR_SITE ]; then
+    MIRROR_SITE=http://mirror.switch.ch
   fi
 }
 
