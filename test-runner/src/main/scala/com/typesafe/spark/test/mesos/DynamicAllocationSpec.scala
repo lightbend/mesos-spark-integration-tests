@@ -20,9 +20,10 @@ trait DynamicAllocationSpec extends Eventually { self: MesosIntTestHelper =>
     List("spark.mesos.coarse" -> "true",
       "spark.dynamicAllocation.enabled" -> "true",
       "spark.shuffle.service.enabled" -> "true",
-      "spark.dynamicAllocation.executorIdleTimeout" -> "3s",
+      "spark.dynamicAllocation.executorIdleTimeout" -> "10s",
       "spark.dynamicAllocation.maxExecutors" -> "3",
       "spark.dynamicAllocation.minExecutors" -> "1",
+      "spark.executor.instances" -> "1",
       "spark.dynamicAllocation.initialExecutors" -> initialExecutorCount.toString,
       "spark.dynamicAllocation.schedulerBacklogTimeout" -> "1s"),
     List(Tag("skip-dcos"))) { sc =>
